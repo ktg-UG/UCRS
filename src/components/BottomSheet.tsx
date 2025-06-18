@@ -7,25 +7,33 @@ import ReservationCard from './ReservationCard';
 import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation'; // Next.js 13+
 
+type Event = {
+  title: string;
+  date: string;
+  start: string;
+  end: string;
+  color?: string;
+  extendedProps?: {
+    maxMembers?: number;
+    members?: string[];
+  };
+};
+
 type Props = {
   date: string | null;
+  events: Event[];
   onClose: () => void;
 };
 
-const dummyData = [
-  { id: '1', time: '12:30〜15:30', members: 4, capacity: 4, owner: 'ゆうじ' },
-  { id: '2', time: '17:00〜18:30', members: 2, capacity: 4, owner: 'しゅん' },
-];
-
-
-export default function BottomSheet({ date, onClose }: Props) {
-    const router = useRouter();
+export default function BottomSheet({ date, events = [], onClose }: Props) {
+  const router = useRouter();
 
   const handleReserve = () => {
     // ボトムシートを閉じてから遷移
     onClose();
     router.push('/reserve/new');  // 予約作成ページのパスに合わせて変更
   };
+
   return (
     <Drawer
       anchor="bottom"
@@ -42,9 +50,22 @@ export default function BottomSheet({ date, onClose }: Props) {
           </Button>
           <Button onClick={onClose}>閉じる</Button>
         </Box>
-        {dummyData.map((item, idx) => (
-          <ReservationCard key={idx} {...item} />
-        ))}
+        {events.length > 0 ? (
+          events.map((event, idx) => (
+            <ReservationCard
+              key={idx}
+              id={event.title}
+              time={`${event.start}〜${event.end}`}
+              members={event.extendedProps?.members?.length || 0}
+              capacity={event.extendedProps?.maxMembers || 0}
+              owner={event.extendedProps?.members?.[0] || '不明'}
+            />
+          ))
+        ) : (
+          <Typography variant="body1" align="center" py={2}>
+            この日の予約はありません
+          </Typography>
+        )}
       </Box>
     </Drawer>
   );

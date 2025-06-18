@@ -9,11 +9,20 @@ import jaLocale from '@fullcalendar/core/locales/ja';
 type Event = {
   title: string;
   date: string;
+  start: string;
+  end: string;
   color?: string;
+  extendedProps?: {[key: string]: any};
+};
+
+type Reservation = {
+  id: number;
+  maxMembers?: number;
+  members: string[];
 };
 
 type Props = {
-  onDateSelect: (dateStr: string) => void;
+  onDateSelect: (dateStr: string, events: Event[]) => void;
 };
 
 const getRandomColor = () => {
@@ -23,26 +32,31 @@ const getRandomColor = () => {
 
 export default function Calendar({ onDateSelect }: Props) {
   const [events, setEvents] = useState<Event[]>([]);
-
+  console.log(events)
   useEffect(() => {
     const fetchReservations = async () => {
       try {
         const response = await fetch('/api/reservation');
         const data = await response.json();
 
-        // ここで配列かどうかを必ず判定
         if (!Array.isArray(data)) {
           console.error('APIエラー:', data.error || data);
           setEvents([]);
           return;
         }
-
         const calendarEvents = data.map((reservation: any) => ({
           title: `予約ID: ${reservation.id}`,
           date: reservation.date,
+          start: reservation.start,
+          end: reservation.end,
+          extendedProps: {
+            maxMembers: reservation.maxMembers,
+            members: reservation.members,
+          },
           color: getRandomColor(),
         }));
 
+        console.log('設定されるイベント:', JSON.stringify(calendarEvents, null, 2));
         setEvents(calendarEvents);
       } catch (error) {
         console.error('予約データの取得に失敗しました:', error);
@@ -54,7 +68,17 @@ export default function Calendar({ onDateSelect }: Props) {
   }, []);
 
   const handleDateClick = (arg: DateClickArg) => {
-    onDateSelect(arg.dateStr);
+    const selectedDateEvents = events.filter(event => {
+      console.log('比較:', {
+        eventDate: event.date,
+        clickedDate: arg.dateStr,
+        isEqual: event.date === arg.dateStr,
+        eventDateType: typeof event.date,
+        clickedDateType: typeof arg.dateStr
+      });
+      return event.date === arg.dateStr;
+    });
+    onDateSelect(arg.dateStr, selectedDateEvents);
   };
 
   return (
