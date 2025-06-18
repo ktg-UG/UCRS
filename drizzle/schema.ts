@@ -1,8 +1,12 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
+// npx drizzle-kit generate
+// npx drizzle-kit push
+import { pgTable, serial, integer, date, time, jsonb } from "drizzle-orm/pg-core";
 
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
-  user: varchar("user", { length: 255 }).notNull(),
-  court: varchar("court", { length: 255 }).notNull(),
-  date: timestamp("date").notNull(),
+  date: date("date").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  maxMembers: integer("max_members"),
+  memberIds: jsonb("member_ids").notNull(),
 });
