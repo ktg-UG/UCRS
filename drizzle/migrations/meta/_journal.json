@@ -22,6 +22,20 @@
       "when": 1749947596572,
       "tag": "0002_chunky_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1750401696808,
+      "tag": "0003_tough_phil_sheldon",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750411603123,
+      "tag": "0004_rare_blizzard",
+      "breakpoints": true
     }
   ]
 }

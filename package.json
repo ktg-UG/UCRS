@@ -21,6 +21,7 @@
     "@mui/x-date-pickers": "^8.5.1",
     "@supabase/supabase-js": "^2.39.3",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.44.2",
     "next": "14.1.0",

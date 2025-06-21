@@ -29,10 +29,9 @@ export default function HomePage() {
 
   return (
     <>
-    <Box sx={{ p: 2 }}>
       {/* ページタイトル */}
-      <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
-        🎾Unite Court Reservation🎾
+      <Typography variant="h4" component="h1" align="center" sx={{ mb: 0 }}>
+        Unite Court Reserve
       </Typography>
 
       {/* カレンダー */}
@@ -41,10 +40,8 @@ export default function HomePage() {
       {/* ボトムシート */}
       <BottomSheet 
         date={selectedDate} 
-        events={selectedEvents}
         onClose={() => setSelectedDate(null)} 
       />
-    </Box>
     </>
   );
 }
