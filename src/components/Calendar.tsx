@@ -1,74 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import jaLocale from '@fullcalendar/core/locales/ja';
-
-type Event = {
-  title: string;
-  date: string;
-  start: string;
-  end: string;
-  color?: string;
-  extendedProps?: {[key: string]: any};
-};
-
-// type Reservation = {
-//   id: number;
-//   maxMembers?: number;
-//   members: string[];
-// };
+import { ReservationEvent } from '@/types';
 
 type Props = {
-  onDateSelect: (dateStr: string, events: Event[]) => void;
+  events: ReservationEvent[];
+  onDateSelect: (dateStr: string) => void;
 };
 
-const getRandomColor = () => {
-  const colors = ['#FFD700', '#90EE90', '#FFB6C1', '#87CEEB'];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
+// ★ 1. 色の配列を定義
+const eventColors = ['#2196F3', '#4CAF50', '#FFC107', '#FF5722', '#9C27B0'];
 
-export default function Calendar({ onDateSelect }: Props) {
-  const [events, setEvents] = useState<Event[]>([]);
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const response = await fetch('/api/reservation');
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          console.error('APIエラー:', data.error || data);
-          setEvents([]);
-          return;
-        }
-
-        const calendarEvents = data.map((reservation: any) => {
-          const startTime = reservation.startTime.slice(0, 5)
-          const endTime = reservation.endTime.slice(0, 5)
-          return {
-            title: `${startTime} ~ ${endTime}`,  // 09:00 ~ 12:00形式で表示
-            date: reservation.date,
-            start: reservation.start,
-            end: reservation.end,
-            color: getRandomColor(),
-          };
-        });
-
-        setEvents(calendarEvents);
-      } catch (error) {
-        console.error('予約データの取得に失敗しました:', error);
-        setEvents([]);
-      }
-    };
-
-    fetchReservations();
-  }, []);
+export default function Calendar({ events: reservationEvents, onDateSelect }: Props) {
+  
+  const calendarEvents = reservationEvents.map(event => ({
+    title: `${event.startTime.slice(0, 5)}〜${event.endTime.slice(0, 5)}`,
+    date: event.date,
+    // ★ 2. IDに基づいて色を決定的に選択する
+    color: eventColors[event.id % eventColors.length],
+    backgroundColor: eventColors[event.id % eventColors.length], // 背景色
+    borderColor: eventColors[event.id % eventColors.length], // 枠線の色
+    extendedProps: event, 
+  }));
 
   const handleDateClick = (arg: DateClickArg) => {
-    const selectedDateEvents = events.filter(event => event.date === arg.dateStr);
-    onDateSelect(arg.dateStr, selectedDateEvents);
+    onDateSelect(arg.dateStr);
   };
 
   return (
@@ -76,12 +35,11 @@ export default function Calendar({ onDateSelect }: Props) {
       plugins={[dayGridPlugin, interactionPlugin]}
       initialView="dayGridMonth"
       locale={jaLocale}
-      events={events}
+      events={calendarEvents}
       height="auto"
       dateClick={handleDateClick}
-      eventDisplay="default"
+      eventDisplay="block"
       fixedWeekCount={false}
-      //dayMaxEventRows={1} // 1日の最大イベント表示行数
     />
   );
 }
