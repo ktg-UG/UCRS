@@ -24,8 +24,21 @@ type Event = {
   memberNames: string[];
 };
 
+type Event = {
+  title: string;
+  date: string;
+  start: string;
+  end: string;
+  color?: string;
+  extendedProps?: {
+    maxMembers?: number;
+    members?: string[];
+  };
+};
+
 type Props = {
   date: string | null;
+  events: Event[];
   onClose: () => void;
 };
 
@@ -96,7 +109,6 @@ export default function BottomSheet({ date, onClose }: Props) {
       handleCloseDialog();
     }
   };
-
 
   const handleReserve = () => {
     if (date) {

@@ -12,6 +12,7 @@ type Event = {
   start: string;
   end: string;
   color?: string;
+  extendedProps?: {[key: string]: any};
 };
 
 // type Reservation = {
@@ -31,7 +32,6 @@ const getRandomColor = () => {
 
 export default function Calendar({ onDateSelect }: Props) {
   const [events, setEvents] = useState<Event[]>([]);
-
   useEffect(() => {
     const fetchReservations = async () => {
       try {
