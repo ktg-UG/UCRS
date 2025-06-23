@@ -15,11 +15,11 @@ type Event = {
   extendedProps?: {[key: string]: any};
 };
 
-type Reservation = {
-  id: number;
-  maxMembers?: number;
-  members: string[];
-};
+// type Reservation = {
+//   id: number;
+//   maxMembers?: number;
+//   members: string[];
+// };
 
 type Props = {
   onDateSelect: (dateStr: string, events: Event[]) => void;
@@ -32,7 +32,6 @@ const getRandomColor = () => {
 
 export default function Calendar({ onDateSelect }: Props) {
   const [events, setEvents] = useState<Event[]>([]);
-  console.log(events)
   useEffect(() => {
     const fetchReservations = async () => {
       try {
@@ -44,19 +43,19 @@ export default function Calendar({ onDateSelect }: Props) {
           setEvents([]);
           return;
         }
-        const calendarEvents = data.map((reservation: any) => ({
-          title: `予約ID: ${reservation.id}`,
-          date: reservation.date,
-          start: reservation.start,
-          end: reservation.end,
-          extendedProps: {
-            maxMembers: reservation.maxMembers,
-            members: reservation.members,
-          },
-          color: getRandomColor(),
-        }));
 
-        console.log('設定されるイベント:', JSON.stringify(calendarEvents, null, 2));
+        const calendarEvents = data.map((reservation: any) => {
+          const startTime = reservation.startTime.slice(0, 5)
+          const endTime = reservation.endTime.slice(0, 5)
+          return {
+            title: `${startTime} ~ ${endTime}`,  // 09:00 ~ 12:00形式で表示
+            date: reservation.date,
+            start: reservation.start,
+            end: reservation.end,
+            color: getRandomColor(),
+          };
+        });
+
         setEvents(calendarEvents);
       } catch (error) {
         console.error('予約データの取得に失敗しました:', error);
@@ -68,16 +67,7 @@ export default function Calendar({ onDateSelect }: Props) {
   }, []);
 
   const handleDateClick = (arg: DateClickArg) => {
-    const selectedDateEvents = events.filter(event => {
-      console.log('比較:', {
-        eventDate: event.date,
-        clickedDate: arg.dateStr,
-        isEqual: event.date === arg.dateStr,
-        eventDateType: typeof event.date,
-        clickedDateType: typeof arg.dateStr
-      });
-      return event.date === arg.dateStr;
-    });
+    const selectedDateEvents = events.filter(event => event.date === arg.dateStr);
     onDateSelect(arg.dateStr, selectedDateEvents);
   };
 
@@ -89,7 +79,9 @@ export default function Calendar({ onDateSelect }: Props) {
       events={events}
       height="auto"
       dateClick={handleDateClick}
-      eventDisplay="block"
+      eventDisplay="default"
+      fixedWeekCount={false}
+      //dayMaxEventRows={1} // 1日の最大イベント表示行数
     />
   );
 }

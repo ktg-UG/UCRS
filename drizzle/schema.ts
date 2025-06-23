@@ -8,5 +8,5 @@ export const reservations = pgTable("reservations", {
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
   maxMembers: integer("max_members"),
-  memberIds: jsonb("member_ids").notNull(),
+  memberNames: jsonb("member_names").notNull(),
 });

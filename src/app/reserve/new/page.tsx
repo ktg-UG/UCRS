@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation'; // クエリパラメータを取得
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -15,33 +15,60 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 export default function ReserveNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // クエリパラメータを取得
 
-  // 日付
-  const [date, setDate] = useState('2025-05-22'); // 初期値は適宜調整
-  // 時間（開始・終了）
+  const [date, setDate] = useState<string>(''); // 初期日付
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('12:00');
-  // 人数
   const [peopleCount, setPeopleCount] = useState(1);
-  // メンバー（仮に名前のリストで複数追加できるイメージ）
-  const [members, setMembers] = useState<string[]>([]);
-  // 目的
+  const [members, setMembers] = useState<string[]>([]);  // メンバー名リスト
   const [purpose, setPurpose] = useState('');
 
   const peopleOptions = [1, 2, 3, 4, 5, 6];
 
-  // メンバー追加サンプル（簡易）
+  // URLパラメータから日付を取得
+  useEffect(() => {
+    const selectedDate = searchParams.get('date'); // クエリパラメータから日付を取得
+    if (selectedDate) {
+      setDate(selectedDate); // フォームに設定
+    }
+  }, [searchParams]);
+
+  // メンバー追加
   const addMember = () => {
     const name = prompt('メンバー名を入力してください');
     if (name) setMembers([...members, name]);
   };
 
-  const handleSubmit = () => {
-    // TODO: バリデーションやAPI送信など実装
-    alert(`予約日: ${date}\n時間: ${startTime}〜${endTime}\n人数: ${peopleCount}\nメンバー: ${members.join(', ')}\n目的: ${purpose}`);
+  // メンバー削除
+  const removeMember = (index: number) => {
+    const newMembers = members.filter((_, idx) => idx !== index);
+    setMembers(newMembers);
+  };
 
-    // 遷移
-    router.push('/');  // 完了後トップなどに戻る例
+  const handleSubmit = async () => {
+    // メンバー名をそのまま送信
+    const res = await fetch('/api/reservation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        startTime,
+        endTime,
+        maxMembers: peopleCount,
+        memberNames: members,  // メンバー名リストを送信
+        purpose,  // 目的も送信
+      }),
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      alert(`予約成功！ID: ${result.id}`);
+      router.push('/');
+    } else {
+      const error = await res.json();
+      alert(`予約失敗: ${error.error}`);
+    }
   };
 
   return (
@@ -52,11 +79,7 @@ export default function ReserveNewPage() {
 
       {/* 日付 */}
       <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-        <Typography>日付</Typography>
-        <Typography sx={{ flexGrow: 1, textAlign: 'right' }}>{date}</Typography>
-        <IconButton onClick={() => alert('カレンダー選択UIはここに実装予定')}>
-          <CalendarTodayIcon />
-        </IconButton>
+        <Typography>日付: {date}</Typography>
       </Stack>
 
       {/* 時間 */}
@@ -105,6 +128,8 @@ export default function ReserveNewPage() {
             <Box
               key={idx}
               sx={{
+                display: 'flex',
+                alignItems: 'center',
                 bgcolor: 'grey.300',
                 px: 1,
                 py: 0.5,
@@ -113,6 +138,13 @@ export default function ReserveNewPage() {
               }}
             >
               {member}
+              <IconButton
+                size="small"
+                onClick={() => removeMember(idx)} // 削除ボタン
+                sx={{ ml: 1, fontSize: 12 }}
+              >
+                ×
+              </IconButton>
             </Box>
           ))}
         </Box>
