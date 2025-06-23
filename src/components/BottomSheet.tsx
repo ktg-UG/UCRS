@@ -1,91 +1,51 @@
 'use client';
 
-import { useEffect, useState, MouseEvent } from 'react'; // MouseEventを追加
+import { useState, MouseEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import IconButton from '@mui/material/IconButton'; // 追加
-import Dialog from '@mui/material/Dialog'; // 追加
-import DialogActions from '@mui/material/DialogActions'; // 追加
-import DialogContent from '@mui/material/DialogContent'; // 追加
-import DialogContentText from '@mui/material/DialogContentText'; // 追加
-import DialogTitle from '@mui/material/DialogTitle'; // 追加
-import DeleteIcon from '@mui/icons-material/Delete'; // 追加
-import { useRouter } from 'next/navigation';
+import IconButton from '@mui/material/IconButton';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { ReservationEvent } from '@/types'; // ★ 1. 共通の型定義をインポート
 
-// APIの型と合わせるため、idをnumberに変更するのが望ましい
-type Event = {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  maxMembers: number;
-  memberNames: string[];
-};
-
-type Event = {
-  title: string;
-  date: string;
-  start: string;
-  end: string;
-  color?: string;
-  extendedProps?: {
-    maxMembers?: number;
-    members?: string[];
-  };
-};
-
+// ★ 2. 親コンポーネントから受け取るPropsの型を定義
 type Props = {
   date: string | null;
-  events: Event[];
+  events: ReservationEvent[]; // 表示するイベントの配列
   onClose: () => void;
+  onDelete: (eventId: number) => void; // 削除イベントを親に通知する関数
 };
 
-export default function BottomSheet({ date, onClose }: Props) {
+// ★ 3. propsで `events` と `onDelete` を受け取る
+export default function BottomSheet({ date, events, onClose, onDelete }: Props) {
   const router = useRouter();
-  const [events, setEvents] = useState<Event[]>([]);
 
-  // ★ 1. ダイアログの状態管理用
+  // ★ 4. 自身でデータを保持・取得していた下記のコードを完全に削除
+  // const [events, setEvents] = useState<Event[]>([]);
+  // useEffect(() => { ... });
+
+  // ダイアログの表示状態と削除対象IDは、このコンポーネントが管理する
   const [openDialog, setOpenDialog] = useState(false);
-  // ★ 2. 削除対象のイベントIDを保持
   const [targetEventId, setTargetEventId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      if (date) {
-        try {
-          const response = await fetch(`/api/reservation/date/${date}`);
-          if (!response.ok) throw new Error('Failed to fetch events');
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            setEvents(data);
-          } else {
-            console.error('イベントデータの形式が正しくありません', data);
-          }
-        } catch (error) {
-          console.error('イベントの取得に失敗しました', error);
-          setEvents([]); // エラー時はリストを空にする
-        }
-      }
-    };
-    fetchEvents();
-  }, [date]);
-  
-  // ★ 3. 削除ボタンクリック時の処理
   const handleOpenDeleteDialog = (id: number, e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation(); // 親要素のクリックイベント（ページ遷移）が発火するのを防ぐ
+    e.stopPropagation(); // 親要素（カード全体）のクリックイベントの発火を防ぐ
     setTargetEventId(id);
     setOpenDialog(true);
   };
-  
-  // ★ 4. ダイアログを閉じる処理
+
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setTargetEventId(null);
   };
-  
-  // ★ 5. 確定して削除を実行する処理
+
   const handleDeleteConfirm = async () => {
     if (!targetEventId) return;
 
@@ -95,8 +55,8 @@ export default function BottomSheet({ date, onClose }: Props) {
       });
 
       if (res.ok) {
-        // 画面上から削除されたイベントを即座に消す
-        setEvents((prevEvents) => prevEvents.filter((event) => event.id !== targetEventId));
+        // ★ 5. 自身の状態を更新する代わりに、親から渡された onDelete 関数を呼び出す
+        onDelete(targetEventId);
         alert('予約を取り消しました。');
       } else {
         const error = await res.json();
@@ -128,9 +88,9 @@ export default function BottomSheet({ date, onClose }: Props) {
             </Button>
             <Button onClick={onClose}>閉じる</Button>
           </Box>
+          {/* ★ 6. propsで渡された `events` を元にリストを描画 */}
           {events.length > 0 ? (
             events.map((event) => (
-              // ★ 6. 予約カード全体をFlexboxコンテナに変更
               <Box
                 key={event.id}
                 sx={{
@@ -146,12 +106,10 @@ export default function BottomSheet({ date, onClose }: Props) {
                   }
                 }}
               >
-                {/* ★ 7. 詳細情報部分（クリックでページ遷移） */}
                 <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
                   <div>👥 {event.memberNames.length} / {event.maxMembers} 🙍 {event.memberNames.join('・')}</div>
                 </Box>
-                {/* ★ 8. 削除ボタン */}
                 <IconButton
                   aria-label="delete"
                   size="small"
@@ -169,18 +127,13 @@ export default function BottomSheet({ date, onClose }: Props) {
         </Box>
       </Drawer>
 
-      {/* ★ 9. 削除確認ダイアログ */}
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
       >
-        <DialogTitle id="alert-dialog-title">
-          予約の取り消し確認
-        </DialogTitle>
+        <DialogTitle>予約の取り消し確認</DialogTitle>
         <DialogContent>
-          <DialogContentText id="alert-dialog-description">
+          <DialogContentText>
             この予約を本当にとり消しますか？この操作は元に戻せません。
           </DialogContentText>
         </DialogContent>
