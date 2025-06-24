@@ -11,23 +11,28 @@ type Props = {
   onDateSelect: (dateStr: string) => void;
 };
 
-// ★ 1. 色の配列を定義
-const eventColors = ['#2196F3', '#4CAF50', '#FFC107', '#FF5722', '#9C27B0'];
-
 export default function Calendar({ events: reservationEvents, onDateSelect }: Props) {
   
-  const calendarEvents = reservationEvents.map(event => ({
-    title: `${event.startTime.slice(0, 5)}〜${event.endTime.slice(0, 5)}`,
-    date: event.date,
-    // ★ 2. IDに基づいて色を決定的に選択する
-    color: eventColors[event.id % eventColors.length],
-    backgroundColor: eventColors[event.id % eventColors.length], // 背景色
-    borderColor: eventColors[event.id % eventColors.length], // 枠線の色
-    extendedProps: event, 
-  }));
+  // カレンダーイベントを動的に生成
+  const calendarEvents = reservationEvents.map(event => {
+    // 現在の参加人数（名前の数）と募集人数を比較
+    const isFullyBooked = event.memberNames.length >= event.maxMembers;
+    
+    // 参加人数が満員の場合（緑色）、そうでない場合（黄色）
+    const eventColor = isFullyBooked ? '#66bb6a' : '#ffeb3b';
+
+    return {
+      title: `${event.startTime.slice(0, 5)}〜${event.endTime.slice(0, 5)}`,
+      date: event.date,
+      color: eventColor,  // 緑色または黄色
+      backgroundColor: eventColor,  // 背景色
+      borderColor: eventColor,  // 枠線の色
+      extendedProps: event,  // イベントの詳細データを保存
+    };
+  });
 
   const handleDateClick = (arg: DateClickArg) => {
-    onDateSelect(arg.dateStr);
+    onDateSelect(arg.dateStr);  // 日付クリック時に親コンポーネントに通知
   };
 
   return (
@@ -35,11 +40,11 @@ export default function Calendar({ events: reservationEvents, onDateSelect }: Pr
       plugins={[dayGridPlugin, interactionPlugin]}
       initialView="dayGridMonth"
       locale={jaLocale}
-      events={calendarEvents}
+      events={calendarEvents}  // 作成したカレンダーイベントを渡す
       height="auto"
-      dateClick={handleDateClick}
+      dateClick={handleDateClick}  // 日付クリック時の処理
       eventDisplay="block"
-      fixedWeekCount={false}
+      fixedWeekCount={false}  // カレンダーの週数を固定しない
     />
   );
 }

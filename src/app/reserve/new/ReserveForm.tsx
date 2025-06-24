@@ -66,6 +66,10 @@ export default function ReserveForm() {
     }
   };
 
+    const handleCancel = () => {
+      router.back();
+  };
+
   return (
     <Box sx={{ maxWidth: 400, margin: 'auto', p: 2 }}>
       <Typography variant="h5" align="center" gutterBottom>
@@ -162,9 +166,14 @@ export default function ReserveForm() {
       </Stack>
 
       {/* 予約ボタン */}
-      <Button fullWidth variant="contained" onClick={handleSubmit}>
-        予約する
-      </Button>
+      <Stack spacing={2}>
+        <Button fullWidth variant="contained" onClick={handleSubmit}>
+          予約する
+        </Button>
+        <Button fullWidth variant="outlined" onClick={handleCancel}>
+            キャンセル
+        </Button>
+      </Stack>
     </Box>
   );
 }

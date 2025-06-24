@@ -13,9 +13,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { ReservationEvent } from '@/types'; // ★ 1. 共通の型定義をインポート
+import { ReservationEvent } from '@/types'; // 共通の型定義
 
-// ★ 2. 親コンポーネントから受け取るPropsの型を定義
 type Props = {
   date: string | null;
   events: ReservationEvent[]; // 表示するイベントの配列
@@ -23,13 +22,8 @@ type Props = {
   onDelete: (eventId: number) => void; // 削除イベントを親に通知する関数
 };
 
-// ★ 3. propsで `events` と `onDelete` を受け取る
 export default function BottomSheet({ date, events, onClose, onDelete }: Props) {
   const router = useRouter();
-
-  // ★ 4. 自身でデータを保持・取得していた下記のコードを完全に削除
-  // const [events, setEvents] = useState<Event[]>([]);
-  // useEffect(() => { ... });
 
   // ダイアログの表示状態と削除対象IDは、このコンポーネントが管理する
   const [openDialog, setOpenDialog] = useState(false);
@@ -55,8 +49,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
       });
 
       if (res.ok) {
-        // ★ 5. 自身の状態を更新する代わりに、親から渡された onDelete 関数を呼び出す
-        onDelete(targetEventId);
+        onDelete(targetEventId); // 親に削除通知
         alert('予約を取り消しました。');
       } else {
         const error = await res.json();
@@ -65,7 +58,6 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
     } catch (err) {
       alert('削除処理中にエラーが発生しました。');
     } finally {
-      // 処理が終わったらダイアログを閉じる
       handleCloseDialog();
     }
   };
@@ -76,6 +68,16 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
     }
     onClose();
   };
+
+  // イベントを開始時刻順に並べ替え
+  const sortedEvents = [...events].sort((a, b) => {
+    // `startTime`を時間として比較する
+    const aTime = a.startTime.split(':').map(Number);
+    const bTime = b.startTime.split(':').map(Number);
+
+    // 時間の差を比較
+    return aTime[0] - bTime[0] || aTime[1] - bTime[1];
+  });
 
   return (
     <>
@@ -88,9 +90,10 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
             </Button>
             <Button onClick={onClose}>閉じる</Button>
           </Box>
-          {/* ★ 6. propsで渡された `events` を元にリストを描画 */}
-          {events.length > 0 ? (
-            events.map((event) => (
+
+          {/* イベントを開始時刻順に並べて表示 */}
+          {sortedEvents.length > 0 ? (
+            sortedEvents.map((event) => (
               <Box
                 key={event.id}
                 sx={{
@@ -102,8 +105,8 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                   borderRadius: '4px',
                   cursor: 'pointer',
                   '&:hover': {
-                      opacity: 0.8,
-                  }
+                    opacity: 0.8,
+                  },
                 }}
               >
                 <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
@@ -127,10 +130,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
         </Box>
       </Drawer>
 
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-      >
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>予約の取り消し確認</DialogTitle>
         <DialogContent>
           <DialogContentText>
