@@ -1,22 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Typography from '@mui/material/Typography';
+import { useRouter } from 'next/navigation';
+import { Typography, Box, Button, Stack, Container } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import Calendar from '@/components/Calendar';
 import BottomSheet from '@/components/BottomSheet';
-import { ReservationEvent } from '@/types'; // 共通の型をインポート
+import { ReservationEvent } from '@/types';
 
 export default function HomePage() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  
-  // ★ 1. アプリ全体の予約データをここで一元管理する
   const [allEvents, setAllEvents] = useState<ReservationEvent[]>([]);
 
-  // ★ 2. 初回読み込み時に全データを取得する
   useEffect(() => {
     const fetchAllEvents = async () => {
       try {
-        // 全予約を取得するAPIを想定 (このAPIは別途作成が必要な場合があります)
         const response = await fetch('/api/reservation'); 
         if (!response.ok) throw new Error('Failed to fetch events');
         const data = await response.json();
@@ -28,42 +27,71 @@ export default function HomePage() {
     fetchAllEvents();
   }, []);
 
-  // ★ 3. 選択された日付に該当するイベントをフィルタリング
   const selectedEvents = selectedDate
     ? allEvents.filter(event => event.date === selectedDate)
     : [];
 
-  // ★ 4. Calendarコンポーネントからの日付選択を処理
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
   };
   
-  // ★ 5. BottomSheetから削除通知を受け取り、全データリストを更新する
   const handleEventDelete = (deletedEventId: number) => {
     setAllEvents(prevEvents => prevEvents.filter(event => event.id !== deletedEventId));
-    // ボトムシートも自動的に閉じる
     setSelectedDate(null);
   };
 
+  const handleNewReservation = () => {
+    router.push('/reserve/new');
+  };
+
   return (
-    <>
-      <Typography variant="h4" component="h1" align="center" sx={{ mb: 0 }}>
+    <Container maxWidth="md" sx={{ py: 2 }}>
+      <Typography variant="h4" component="h1" align="center" sx={{ mb: 2 }}>
         Unite Court Reserve
       </Typography>
 
-      {/* ★ 6. Calendarに全データを渡す */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 1, sm: 2 }, my: 2, flexWrap: 'wrap' }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#f44336', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">プライベート</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#66bb6a', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">満員</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#ffa726', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">残り1人</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#ffeb3b', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">空きあり</Typography>
+        </Stack>
+      </Box>
+
       <Calendar 
         events={allEvents} 
         onDateSelect={handleDateSelect} 
       />
 
-      {/* ★ 7. BottomSheetにフィルタリングしたデータと削除用関数を渡す */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          startIcon={<AddIcon />}
+          onClick={handleNewReservation}
+        >
+          新規予約を作成
+        </Button>
+      </Box>
+
       <BottomSheet 
         date={selectedDate} 
         events={selectedEvents}
         onClose={() => setSelectedDate(null)} 
         onDelete={handleEventDelete}
       />
-    </>
+    </Container>
   );
 }
