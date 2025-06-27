@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Box, Typography, Button, Stack, IconButton, CircularProgress, Container } from '@mui/material'; // Containerをインポート
+import { Box, Typography, Button, Stack, IconButton, CircularProgress, Container } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReservationForm, { ReservationFormData } from '@/components/ReservationForm';
 
-export default function ReserveNewPage() {
+// --- ▼ フォームの本体となるクライアントコンポーネントを定義 ▼ ---
+function ReserveNewForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Suspenseの内側でフックを呼び出す
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
@@ -22,6 +23,7 @@ export default function ReserveNewPage() {
     purpose: '練習',
   });
 
+  // URLに日付パラメータがあれば初期値として設定
   useEffect(() => {
     const dateFromParams = searchParams.get('date');
     if (dateFromParams) {
@@ -29,6 +31,7 @@ export default function ReserveNewPage() {
     }
   }, [searchParams]);
 
+  // スイッチが切り替わったときにフォームのデータをリセット
   useEffect(() => {
     if (isPrivate) {
       setFormData(prev => ({ ...prev, maxMembers: 1, purpose: 'プライベート', memberNames: [] }));
@@ -75,7 +78,6 @@ export default function ReserveNewPage() {
   };
 
   return (
-    // --- ▼全体をContainerでラップ▼ ---
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <Stack direction="row" alignItems="center" mb={2}>
         <IconButton onClick={() => router.back()}>
@@ -108,6 +110,21 @@ export default function ReserveNewPage() {
         </Button>
       </Stack>
     </Container>
-    // --- ▲ここまで▲ ---
+  );
+}
+
+const LoadingFallback = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+    <CircularProgress />
+    <Typography sx={{ ml: 2 }}>フォームを読み込み中...</Typography>
+  </Box>
+);
+
+
+export default function ReserveNewPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ReserveNewForm />
+    </Suspense>
   );
 }
