@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, MouseEvent } from 'react';
+import { useState, MouseEvent, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
@@ -13,24 +13,33 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { ReservationEvent } from '@/types'; // 共通の型定義
+import { ReservationEvent } from '@/types';
 
 type Props = {
   date: string | null;
-  events: ReservationEvent[]; // 表示するイベントの配列
+  events: ReservationEvent[];
   onClose: () => void;
-  onDelete: (eventId: number) => void; // 削除イベントを親に通知する関数
+  onDelete: (eventId: number) => void;
 };
 
 export default function BottomSheet({ date, events, onClose, onDelete }: Props) {
   const router = useRouter();
 
-  // ダイアログの表示状態と削除対象IDは、このコンポーネントが管理する
   const [openDialog, setOpenDialog] = useState(false);
   const [targetEventId, setTargetEventId] = useState<number | null>(null);
 
+  // 選択された日付が過去かどうかをメモ化して判定
+  const isPastDate = useMemo(() => {
+    if (!date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 今日の日付の0時0分0秒
+    const selectedDate = new Date(date);
+    return selectedDate < today;
+  }, [date]);
+
+
   const handleOpenDeleteDialog = (id: number, e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation(); // 親要素（カード全体）のクリックイベントの発火を防ぐ
+    e.stopPropagation();
     setTargetEventId(id);
     setOpenDialog(true);
   };
@@ -49,7 +58,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
       });
 
       if (res.ok) {
-        onDelete(targetEventId); // 親に削除通知
+        onDelete(targetEventId);
         alert('予約を取り消しました。');
       } else {
         const error = await res.json();
@@ -71,11 +80,8 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
 
   // イベントを開始時刻順に並べ替え
   const sortedEvents = [...events].sort((a, b) => {
-    // `startTime`を時間として比較する
     const aTime = a.startTime.split(':').map(Number);
     const bTime = b.startTime.split(':').map(Number);
-
-    // 時間の差を比較
     return aTime[0] - bTime[0] || aTime[1] - bTime[1];
   });
 
@@ -85,13 +91,17 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
         <Box p={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">{date} の予約状況</Typography>
-            <Button variant="contained" onClick={handleReserve}>
-              予約する
-            </Button>
-            <Button onClick={onClose}>閉じる</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {/* 過去の日付でない場合のみ「予約する」ボタンを表示 */}
+              {!isPastDate && (
+                <Button variant="contained" onClick={handleReserve}>
+                  この日に予約する
+                </Button>
+              )}
+              <Button onClick={onClose} sx={{ ml: 1 }}>閉じる</Button>
+            </Box>
           </Box>
 
-          {/* イベントを開始時刻順に並べて表示 */}
           {sortedEvents.length > 0 ? (
             sortedEvents.map((event) => (
               <Box
@@ -99,7 +109,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '8px',
+                  padding: '12px 8px',
                   backgroundColor: event.memberNames.length >= event.maxMembers ? '#66bb6a' : '#ffeb3b',
                   marginBottom: '8px',
                   borderRadius: '4px',
@@ -111,15 +121,19 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
               >
                 <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
-                  <div>👥 {event.memberNames.length} / {event.maxMembers} 🙍 {event.memberNames.join('・')}</div>
+                  <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
+                  <div>🙍 {event.memberNames.join('・')}</div>
                 </Box>
-                <IconButton
-                  aria-label="delete"
-                  size="small"
-                  onClick={(e) => handleOpenDeleteDialog(event.id, e)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                {/* 過去の日付でなく、かつ、ログインユーザーが作成した予約の場合のみ削除ボタンを表示するなどの制御が考えられます */}
+                {!isPastDate && (
+                  <IconButton
+                    aria-label="delete"
+                    size="small"
+                    onClick={(e) => handleOpenDeleteDialog(event.id, e)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
               </Box>
             ))
           ) : (

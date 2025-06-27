@@ -24,6 +24,6 @@
       "@drizzle/*": ["drizzle/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "drizzle.config.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "drizzle.config.ts"],
   "exclude": ["node_modules"]
 }

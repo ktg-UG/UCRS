@@ -43,6 +43,13 @@
       "when": 1750752342664,
       "tag": "0005_charming_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1750992724413,
+      "tag": "0006_purple_gargoyle",
+      "breakpoints": true
     }
   ]
 }

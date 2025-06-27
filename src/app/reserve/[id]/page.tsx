@@ -12,11 +12,13 @@ import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Autocomplete from '@mui/material/Autocomplete';
 
-// APIから返されるデータの型。purposeなどのフィールドを追加。
-// 実際のデータベーススキーマに合わせて調整してください。
+const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const minuteOptions = ['00', '15', '30', '45'];
+
 type Reservation = {
-  id: number; // number型と仮定
+  id: number;
   date: string;
   startTime: string;
   endTime: string;
@@ -25,7 +27,6 @@ type Reservation = {
   purpose?: string;
 };
 
-// フォームで管理するデータの型
 type ReservationForm = {
   startTime: string;
   endTime: string;
@@ -33,7 +34,6 @@ type ReservationForm = {
   memberNames: string[];
   purpose: string;
 };
-
 
 export default function ReserveDetailPage() {
   const router = useRouter();
@@ -44,8 +44,7 @@ export default function ReserveDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // 編集用フォームの状態
+  
   const [form, setForm] = useState<ReservationForm>({
     startTime: '09:00',
     endTime: '12:00',
@@ -54,9 +53,11 @@ export default function ReserveDetailPage() {
     purpose: '',
   });
 
+  const [allMembers, setAllMembers] = useState<string[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+
   const peopleOptions = [1, 2, 3, 4, 5, 6];
 
-  // 1. APIからデータを取得する
   useEffect(() => {
     if (id) {
       const fetchDetail = async () => {
@@ -71,7 +72,6 @@ export default function ReserveDetailPage() {
           const data: Reservation = await response.json();
           setDetail(data);
         } catch (err: any) {
-          console.error(err);
           setError(err.message);
         } finally {
           setLoading(false);
@@ -81,7 +81,6 @@ export default function ReserveDetailPage() {
     }
   }, [id]);
 
-  // 2. 取得したデータをフォームに反映する
   useEffect(() => {
     if (detail) {
       setForm({
@@ -89,59 +88,69 @@ export default function ReserveDetailPage() {
         endTime: detail.endTime,
         maxMembers: detail.maxMembers,
         memberNames: detail.memberNames,
-        purpose: detail.purpose || '', // purposeがnullの場合も考慮
+        purpose: detail.purpose || '',
       });
     }
   }, [detail]);
+  
+  useEffect(() => {
+    const fetchMembers = async () => {
+      setLoadingMembers(true);
+      try {
+        const res = await fetch('/api/members');
+        if (!res.ok) throw new Error('メンバーの取得に失敗しました');
+        const data = await res.json();
+        setAllMembers(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+    fetchMembers();
+  }, []);
 
-  // フォームの値を更新する汎用ハンドラ
   const handleChange = (field: keyof ReservationForm, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
-  
-  // メンバー追加
-  const addMember = () => {
-    const name = prompt('追加するメンバー名を入力してください');
-    if (name) {
-        handleChange('memberNames', [...form.memberNames, name]);
-    }
+
+  const handleTimeChange = (
+    timeField: 'startTime' | 'endTime',
+    part: 'hour' | 'minute',
+    value: string
+  ) => {
+    const currentTime = form[timeField];
+    const [hour, minute] = currentTime.split(':');
+    const newTime = part === 'hour' ? `${value}:${minute}` : `${hour}:${value}`;
+    handleChange(timeField, newTime);
   };
 
-  // メンバー削除
-  const removeMember = (index: number) => {
-    const newMembers = form.memberNames.filter((_, idx) => idx !== index);
-    handleChange('memberNames', newMembers);
-  };
-  
-  // 編集をキャンセルして元の状態に戻す
   const handleCancel = () => {
-      if(detail) {
-          // detailのデータでフォームをリセット
-          setForm({
-              startTime: detail.startTime,
-              endTime: detail.endTime,
-              maxMembers: detail.maxMembers,
-              memberNames: detail.memberNames,
-              purpose: detail.purpose || '',
-          });
-      }
-      setEditMode(false);
+    if (detail) {
+      setForm({
+        startTime: detail.startTime,
+        endTime: detail.endTime,
+        maxMembers: detail.maxMembers,
+        memberNames: detail.memberNames,
+        purpose: detail.purpose || '',
+      });
+    }
+    setEditMode(false);
   };
 
-  // 3. データを保存（更新）する
   const handleSave = async () => {
     try {
       const res = await fetch(`/api/reservation/id/${id}`, {
-        method: 'PUT', // または 'PATCH'
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
 
       if (res.ok) {
         const updatedData = await res.json();
-        setDetail(updatedData); // 画面の表示を更新
+        setDetail(updatedData);
         alert('予約を更新しました');
-        setEditMode(false); // 編集モードを終了
+        setEditMode(false);
       } else {
         const error = await res.json();
         alert(`更新失敗: ${error.error}`);
@@ -151,17 +160,16 @@ export default function ReserveDetailPage() {
     }
   };
 
-  // 4. データを削除する
   const handleDelete = async () => {
     if (window.confirm('本当にこの募集を削除しますか？')) {
       try {
         const res = await fetch(`/api/reservation/id/${id}`, { method: 'DELETE' });
-        if(res.ok) {
-            alert('募集を削除しました');
-            router.push('/');
+        if (res.ok) {
+          alert('募集を削除しました');
+          router.push('/');
         } else {
-            const error = await res.json();
-            alert(`削除失敗: ${error.error}`);
+          const error = await res.json();
+          alert(`削除失敗: ${error.error}`);
         }
       } catch (err) {
         alert('削除処理中にエラーが発生しました');
@@ -180,29 +188,38 @@ export default function ReserveDetailPage() {
   return (
     <Box sx={{ maxWidth: 400, margin: 'auto', p: 2 }}>
       <Stack direction="row" alignItems="center" mb={2}>
-         <IconButton onClick={handleBack}>
-            <ArrowBackIcon />
+        <IconButton onClick={handleBack}>
+          <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" sx={{ flexGrow: 1, textAlign: 'center' }}>
-            募集詳細
+          募集詳細
         </Typography>
-        <Box sx={{ width: 40 }} /> {/* 中央揃えのためのスペーサー */}
+        <Box sx={{ width: 40 }} />
       </Stack>
 
-      {/* 日付 */}
       <Stack direction="row" alignItems="center" spacing={1} mb={2}>
         <Typography>日付: {detail.date}</Typography>
       </Stack>
 
-      {/* 時間 */}
       <Stack direction="row" alignItems="center" spacing={1} mb={2}>
         <Typography>時間</Typography>
-        <TextField type="time" value={form.startTime} disabled={!editMode} onChange={(e) => handleChange('startTime', e.target.value)} />
+        <TextField select value={form.startTime.split(':')[0]} onChange={(e) => handleTimeChange('startTime', 'hour', e.target.value)} disabled={!editMode} sx={{ minWidth: 80 }} aria-label="開始時間（時）">
+          {hourOptions.map((h) => (<MenuItem key={`start-h-${h}`} value={h}>{h}</MenuItem>))}
+        </TextField>
+        <Typography>:</Typography>
+        <TextField select value={form.startTime.split(':')[1]} onChange={(e) => handleTimeChange('startTime', 'minute', e.target.value)} disabled={!editMode} sx={{ minWidth: 80 }} aria-label="開始時間（分）">
+          {minuteOptions.map((m) => (<MenuItem key={`start-m-${m}`} value={m}>{m}</MenuItem>))}
+        </TextField>
         <Typography>〜</Typography>
-        <TextField type="time" value={form.endTime} disabled={!editMode} onChange={(e) => handleChange('endTime', e.target.value)} />
+        <TextField select value={form.endTime.split(':')[0]} onChange={(e) => handleTimeChange('endTime', 'hour', e.target.value)} disabled={!editMode} sx={{ minWidth: 80 }} aria-label="終了時間（時）">
+          {hourOptions.map((h) => (<MenuItem key={`end-h-${h}`} value={h}>{h}</MenuItem>))}
+        </TextField>
+        <Typography>:</Typography>
+        <TextField select value={form.endTime.split(':')[1]} onChange={(e) => handleTimeChange('endTime', 'minute', e.target.value)} disabled={!editMode} sx={{ minWidth: 80 }} aria-label="終了時間（分）">
+          {minuteOptions.map((m) => (<MenuItem key={`end-m-${m}`} value={m}>{m}</MenuItem>))}
+        </TextField>
       </Stack>
 
-      {/* 定員 */}
       <Stack direction="row" alignItems="center" spacing={1} mb={2}>
         <Typography>定員</Typography>
         <TextField select value={form.maxMembers} disabled={!editMode} onChange={(e) => handleChange('maxMembers', Number(e.target.value))} sx={{ minWidth: 100 }}>
@@ -210,23 +227,31 @@ export default function ReserveDetailPage() {
         </TextField>
       </Stack>
 
-      {/* メンバー */}
-      <Box mb={2}>
-        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-          <Typography>メンバー ({form.memberNames.length}人)</Typography>
-          {editMode && <Button size="small" variant="outlined" onClick={addMember}>＋</Button>}
-        </Stack>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {form.memberNames.map((member, idx) => (
-            <Box key={idx} sx={{ display: 'flex', alignItems: 'center', bgcolor: 'grey.200', px: 1, py: 0.5, borderRadius: 1 }}>
-              {member}
-              {editMode && <IconButton size="small" onClick={() => removeMember(idx)} sx={{ ml: 0.5 }}>×</IconButton>}
-            </Box>
-          ))}
-        </Box>
-      </Box>
-
-      {/* 目的 */}
+      <Autocomplete
+        // --- ▼ 複数選択を許可するプロパティ ▼ ---
+        multiple
+        // --- ▲ ここが重要です ▲ ---
+        freeSolo
+        options={allMembers}
+        value={form.memberNames}
+        disabled={!editMode}
+        onChange={(event, newValue) => {
+          handleChange('memberNames', newValue); // 新しい配列でstateを更新
+        }}
+        loading={loadingMembers}
+        loadingText="メンバー読込中..."
+        noOptionsText="該当メンバーなし"
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            variant="outlined"
+            label="メンバー"
+            placeholder="名前を入力 or 選択"
+          />
+        )}
+        sx={{ mb: 2 }}
+      />
+      
       <Stack direction="row" alignItems="center" spacing={1} mb={3}>
         <Typography>目的</Typography>
         <TextField select value={form.purpose} disabled={!editMode} onChange={(e) => handleChange('purpose', e.target.value)} sx={{ minWidth: 150 }}>
@@ -237,7 +262,6 @@ export default function ReserveDetailPage() {
         </TextField>
       </Stack>
 
-      {/* ボタン群 */}
       <Stack spacing={2}>
         {!editMode ? (
           <Button fullWidth variant="contained" onClick={() => setEditMode(true)}>

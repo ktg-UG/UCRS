@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
-import { reservations } from "@/../drizzle/schema";
-import { eq } from 'drizzle-orm';
+import { reservations, members } from "@/../drizzle/schema"; // members スキーマをインポート
+import { eq, ne, and } from 'drizzle-orm';
+
+// 時刻が15分単位かどうかをチェックするヘルパー関数
+const isMultipleOf15Minutes = (time: string): boolean => {
+  if (!time || !time.includes(':')) return false;
+  const minutes = parseInt(time.split(':')[1], 10);
+  return !isNaN(minutes) && minutes % 15 === 0;
+};
 
 // GET: 予約詳細の取得
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -28,33 +35,53 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// PUT: 予約の更新
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
   const reservationId = Number(id);
-
   if (isNaN(reservationId)) {
     return NextResponse.json({ error: '無効なID形式です' }, { status: 400 });
   }
 
   try {
     const body = await request.json();
+    const { startTime, endTime, purpose, maxMembers, memberNames } = body;
 
-    // Drizzleを使ってデータを更新し、更新後のデータを返す
-    const updatedReservations = await db.update(reservations)
-      .set({
-        startTime: body.startTime,
-        endTime: body.endTime,
-        maxMembers: body.maxMembers,
-        memberNames: body.memberNames,
-      })
-      .where(eq(reservations.id, reservationId))
-      .returning(); // 更新された行のデータを返す
+    if (!startTime || !endTime || !maxMembers || !memberNames || !purpose) {
+      return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
+    }
+    if (!isMultipleOf15Minutes(startTime) || !isMultipleOf15Minutes(endTime)) {
+      return NextResponse.json({ error: '時間は15分単位で指定してください' }, { status: 400 });
+    }
+    if (startTime >= endTime) {
+      return NextResponse.json({ error: '終了時刻は開始時刻より後に設定してください' }, { status: 400 });
+    }
 
+    const originalReservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId), columns: { date: true } });
+    if (!originalReservation) {
+      return NextResponse.json({ error: '更新対象の予約が見つかりません' }, { status: 404 });
+    }
+    
+    const existingReservations = await db.select().from(reservations).where(and(eq(reservations.date, originalReservation.date), ne(reservations.id, reservationId)));
+    const newStart = new Date(`1970-01-01T${startTime}`);
+    const newEnd = new Date(`1970-01-01T${endTime}`);
+    if (existingReservations.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
+      return NextResponse.json({ error: '指定された時間帯は既に他の予約と重複しています' }, { status: 409 });
+    }
+
+    // --- ▼ここから追加 ▼ ---
+    // 送信されたメンバー名がmembersテーブルになければ登録する
+    if (Array.isArray(memberNames) && memberNames.length > 0) {
+        const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name);
+        if (newMembers.length > 0) {
+            await db.insert(members).values(newMembers).onConflictDoNothing();
+        }
+    }
+    // --- ▲ここまで追加 ▲ ---
+
+    const updatedReservations = await db.update(reservations).set({ startTime, endTime, maxMembers, memberNames, purpose }).where(eq(reservations.id, reservationId)).returning();
     if (updatedReservations.length === 0) {
       return NextResponse.json({ error: '更新対象の予約が見つかりません' }, { status: 404 });
     }
-
     return NextResponse.json(updatedReservations[0]);
 
   } catch (error) {
