@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";  // drizzle DB接続
-import { reservations } from "@/../drizzle/schema";  // reservationsテーブル
+import { reservations } from "@/../drizzle/schema";
 import { eq } from 'drizzle-orm';  // eq演算子をインポート
 
 // GET: 特定の日付に基づく予約データの取得

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, MouseEvent } from 'react';
+import { useState, MouseEvent, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
@@ -13,24 +13,51 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { ReservationEvent } from '@/types'; // 共通の型定義
+import { ReservationEvent } from '@/types';
+
+// 予約の状況に応じて色を返すヘルパー関数 (カレンダーと共通)
+const getReservationColor = (
+  memberCount: number,
+  maxMembers: number,
+  purpose: string | undefined
+): string => {
+  if (purpose === 'プライベート') {
+    return '#f44336'; // 赤色
+  }
+  const spotsLeft = maxMembers - memberCount;
+  if (spotsLeft <= 0) {
+    return '#66bb6a'; // 満員 (緑)
+  }
+  if (spotsLeft === 1) {
+    return '#ffa726'; // 残り1人 (オレンジ)
+  }
+  return '#ffeb3b'; // 空きあり (黄)
+};
 
 type Props = {
   date: string | null;
-  events: ReservationEvent[]; // 表示するイベントの配列
+  events: ReservationEvent[];
   onClose: () => void;
-  onDelete: (eventId: number) => void; // 削除イベントを親に通知する関数
+  onDelete: (eventId: number) => void;
 };
 
 export default function BottomSheet({ date, events, onClose, onDelete }: Props) {
   const router = useRouter();
 
-  // ダイアログの表示状態と削除対象IDは、このコンポーネントが管理する
   const [openDialog, setOpenDialog] = useState(false);
   const [targetEventId, setTargetEventId] = useState<number | null>(null);
 
+  const isPastDate = useMemo(() => {
+    if (!date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    return selectedDate < today;
+  }, [date]);
+
+
   const handleOpenDeleteDialog = (id: number, e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation(); // 親要素（カード全体）のクリックイベントの発火を防ぐ
+    e.stopPropagation();
     setTargetEventId(id);
     setOpenDialog(true);
   };
@@ -49,7 +76,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
       });
 
       if (res.ok) {
-        onDelete(targetEventId); // 親に削除通知
+        onDelete(targetEventId);
         alert('予約を取り消しました。');
       } else {
         const error = await res.json();
@@ -69,13 +96,9 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
     onClose();
   };
 
-  // イベントを開始時刻順に並べ替え
   const sortedEvents = [...events].sort((a, b) => {
-    // `startTime`を時間として比較する
     const aTime = a.startTime.split(':').map(Number);
     const bTime = b.startTime.split(':').map(Number);
-
-    // 時間の差を比較
     return aTime[0] - bTime[0] || aTime[1] - bTime[1];
   });
 
@@ -85,13 +108,16 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
         <Box p={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">{date} の予約状況</Typography>
-            <Button variant="contained" onClick={handleReserve}>
-              予約する
-            </Button>
-            <Button onClick={onClose}>閉じる</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {!isPastDate && (
+                <Button variant="contained" onClick={handleReserve}>
+                  この日に予約する
+                </Button>
+              )}
+              <Button onClick={onClose} sx={{ ml: 1 }}>閉じる</Button>
+            </Box>
           </Box>
 
-          {/* イベントを開始時刻順に並べて表示 */}
           {sortedEvents.length > 0 ? (
             sortedEvents.map((event) => (
               <Box
@@ -99,8 +125,9 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '8px',
-                  backgroundColor: event.memberNames.length >= event.maxMembers ? '#66bb6a' : '#ffeb3b',
+                  padding: '12px 8px',
+                  backgroundColor: getReservationColor(event.memberNames.length, event.maxMembers, event.purpose),
+                  color: '#333',
                   marginBottom: '8px',
                   borderRadius: '4px',
                   cursor: 'pointer',
@@ -111,15 +138,20 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
               >
                 <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
-                  <div>👥 {event.memberNames.length} / {event.maxMembers} 🙍 {event.memberNames.join('・')}</div>
+                  {event.purpose !== 'プライベート' && (
+                     <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
+                  )}
+                  <div>🙍 {event.memberNames.join('・')}</div>
                 </Box>
-                <IconButton
-                  aria-label="delete"
-                  size="small"
-                  onClick={(e) => handleOpenDeleteDialog(event.id, e)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                {!isPastDate && (
+                  <IconButton
+                    aria-label="delete"
+                    size="small"
+                    onClick={(e) => handleOpenDeleteDialog(event.id, e)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
               </Box>
             ))
           ) : (
@@ -133,9 +165,11 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>予約の取り消し確認</DialogTitle>
         <DialogContent>
+          {/* --- ▼ここを修正▼ --- */}
           <DialogContentText>
             この予約を本当にとり消しますか？この操作は元に戻せません。
           </DialogContentText>
+          {/* --- ▲ここまで修正▲ --- */}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>キャンセル</Button>
