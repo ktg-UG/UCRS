@@ -15,6 +15,25 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ReservationEvent } from '@/types';
 
+// 予約の状況に応じて色を返すヘルパー関数 (カレンダーと共通)
+const getReservationColor = (
+  memberCount: number,
+  maxMembers: number,
+  purpose: string | undefined
+): string => {
+  if (purpose === 'プライベート') {
+    return '#f44336'; // 赤色
+  }
+  const spotsLeft = maxMembers - memberCount;
+  if (spotsLeft <= 0) {
+    return '#66bb6a'; // 満員 (緑)
+  }
+  if (spotsLeft === 1) {
+    return '#ffa726'; // 残り1人 (オレンジ)
+  }
+  return '#ffeb3b'; // 空きあり (黄)
+};
+
 type Props = {
   date: string | null;
   events: ReservationEvent[];
@@ -28,11 +47,10 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
   const [openDialog, setOpenDialog] = useState(false);
   const [targetEventId, setTargetEventId] = useState<number | null>(null);
 
-  // 選択された日付が過去かどうかをメモ化して判定
   const isPastDate = useMemo(() => {
     if (!date) return false;
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 今日の日付の0時0分0秒
+    today.setHours(0, 0, 0, 0);
     const selectedDate = new Date(date);
     return selectedDate < today;
   }, [date]);
@@ -78,7 +96,6 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
     onClose();
   };
 
-  // イベントを開始時刻順に並べ替え
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = a.startTime.split(':').map(Number);
     const bTime = b.startTime.split(':').map(Number);
@@ -92,7 +109,6 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">{date} の予約状況</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {/* 過去の日付でない場合のみ「予約する」ボタンを表示 */}
               {!isPastDate && (
                 <Button variant="contained" onClick={handleReserve}>
                   この日に予約する
@@ -110,7 +126,8 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                   display: 'flex',
                   alignItems: 'center',
                   padding: '12px 8px',
-                  backgroundColor: event.memberNames.length >= event.maxMembers ? '#66bb6a' : '#ffeb3b',
+                  backgroundColor: getReservationColor(event.memberNames.length, event.maxMembers, event.purpose),
+                  color: '#333',
                   marginBottom: '8px',
                   borderRadius: '4px',
                   cursor: 'pointer',
@@ -121,10 +138,11 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
               >
                 <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
-                  <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
+                  {event.purpose !== 'プライベート' && (
+                     <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
+                  )}
                   <div>🙍 {event.memberNames.join('・')}</div>
                 </Box>
-                {/* 過去の日付でなく、かつ、ログインユーザーが作成した予約の場合のみ削除ボタンを表示するなどの制御が考えられます */}
                 {!isPastDate && (
                   <IconButton
                     aria-label="delete"
@@ -147,9 +165,11 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>予約の取り消し確認</DialogTitle>
         <DialogContent>
+          {/* --- ▼ここを修正▼ --- */}
           <DialogContentText>
             この予約を本当にとり消しますか？この操作は元に戻せません。
           </DialogContentText>
+          {/* --- ▲ここまで修正▲ --- */}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>キャンセル</Button>

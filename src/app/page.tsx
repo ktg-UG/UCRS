@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+import { Typography, Box, Button, Stack, Container } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import Calendar from '@/components/Calendar';
 import BottomSheet from '@/components/BottomSheet';
@@ -42,23 +40,40 @@ export default function HomePage() {
     setSelectedDate(null);
   };
 
-  // 新規予約ページへ遷移するハンドラ
   const handleNewReservation = () => {
     router.push('/reserve/new');
   };
 
   return (
-    <>
+    <Container maxWidth="md" sx={{ py: 2 }}>
       <Typography variant="h4" component="h1" align="center" sx={{ mb: 2 }}>
         Unite Court Reserve
       </Typography>
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 1, sm: 2 }, my: 2, flexWrap: 'wrap' }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#f44336', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">プライベート</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#66bb6a', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">満員</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#ffa726', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">残り1人</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ width: 16, height: 16, backgroundColor: '#ffeb3b', borderRadius: '4px', border: '1px solid #ccc' }} />
+          <Typography variant="body2">空きあり</Typography>
+        </Stack>
+      </Box>
 
       <Calendar 
         events={allEvents} 
         onDateSelect={handleDateSelect} 
       />
 
-      {/* --- ▼ここから追加 ▼ --- */}
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
         <Button
           variant="contained"
@@ -70,7 +85,6 @@ export default function HomePage() {
           新規予約を作成
         </Button>
       </Box>
-      {/* --- ▲ここまで追加 ▲ --- */}
 
       <BottomSheet 
         date={selectedDate} 
@@ -78,6 +92,6 @@ export default function HomePage() {
         onClose={() => setSelectedDate(null)} 
         onDelete={handleEventDelete}
       />
-    </>
+    </Container>
   );
 }
