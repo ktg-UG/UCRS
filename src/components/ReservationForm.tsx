@@ -1,3 +1,4 @@
+// src/components/ReservationForm.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,6 +12,8 @@ export type ReservationFormData = {
   maxMembers: number;
   memberNames: string[];
   purpose: string;
+  lineNotify?: boolean; // ★ 追加: LINE通知のスイッチ
+  lineGroupIds?: string[]; // ★ 追加: 通知先のLINEグループID
 };
 
 type Props = {
@@ -63,7 +66,6 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
   };
 
   return (
-    // --- ▼メインのStackのspacingを調整▼ ---
     <Stack spacing={3}>
       {!isEditMode && setIsPrivate && (
         <FormGroup>
@@ -74,6 +76,34 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
         </FormGroup>
       )}
       
+      {/* ★ ここから追加: LINE通知スイッチとグループID入力フィールド ★ */}
+      {!isPrivate && !isEditMode && ( // メンバー募集（プライベートではない）新規作成の場合のみ表示
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.lineNotify || false}
+                onChange={(e) => handleChange('lineNotify', e.target.checked)}
+                disabled={disabled}
+              />
+            }
+            label="LINEグループに募集を通知"
+          />
+        </FormGroup>
+      )}
+
+      {formData.lineNotify && !isPrivate && !isEditMode && (
+        <TextField
+          label="通知先のLINEグループID (カンマ区切り)"
+          value={formData.lineGroupIds?.join(',') || ''}
+          onChange={(e) => handleChange('lineGroupIds', e.target.value.split(',').map(id => id.trim()))}
+          disabled={disabled}
+          fullWidth
+          helperText="募集を通知したいLINEグループのIDをカンマ区切りで入力してください。"
+        />
+      )}
+      {/* ★ ここまで追加 ★ */}
+
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography sx={{ minWidth: 60 }}>日付</Typography>
         <DatePicker
@@ -87,7 +117,6 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
         />
       </Stack>
       
-      {/* --- ▼時間選択部分のレイアウトを縦積みに変更▼ --- */}
       <Stack direction="row" alignItems="center" spacing={1}>
         <Typography sx={{ minWidth: 60 }}>開始時刻</Typography>
         <TextField select disabled={disabled} value={formData.startTime.split(':')[0]} onChange={(e) => handleTimeChange('startTime', 'hour', e.target.value)} sx={{ flexGrow: 1 }} aria-label="開始時間（時）">
@@ -109,7 +138,6 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
           {minuteOptions.map((m) => (<MenuItem key={`end-m-${m}`} value={m}>{m}</MenuItem>))}
         </TextField>
       </Stack>
-      {/* --- ▲ここまで▲ --- */}
       
       {isPrivate ? (
         <Stack direction="row" alignItems="center" spacing={1}>

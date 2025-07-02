@@ -1,13 +1,15 @@
+// src/app/reserve/new/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Box, Typography, Button, Stack, IconButton, CircularProgress, Container } from '@mui/material'; // Containerをインポート
+import { Box, Typography, Button, Stack, IconButton, CircularProgress, Container } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReservationForm, { ReservationFormData } from '@/components/ReservationForm';
 
-export default function ReserveNewPage() {
+// --- ▼ フォームの本体となるクライアントコンポーネントを定義 ▼ ---
+function ReserveNewForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,8 +22,11 @@ export default function ReserveNewPage() {
     maxMembers: 4,
     memberNames: [],
     purpose: '練習',
+    lineNotify: false, // ★ 追加: 初期値をfalseに設定
+    lineGroupIds: [],   // ★ 追加: 初期値を空配列に設定
   });
 
+  // URLに日付パラメータがあれば初期値として設定
   useEffect(() => {
     const dateFromParams = searchParams.get('date');
     if (dateFromParams) {
@@ -29,9 +34,10 @@ export default function ReserveNewPage() {
     }
   }, [searchParams]);
 
+  // スイッチが切り替わったときにフォームのデータをリセット
   useEffect(() => {
     if (isPrivate) {
-      setFormData(prev => ({ ...prev, maxMembers: 1, purpose: 'プライベート', memberNames: [] }));
+      setFormData(prev => ({ ...prev, maxMembers: 1, purpose: 'プライベート', memberNames: [], lineNotify: false, lineGroupIds: [] })); // ★ lineNotifyとlineGroupIdsもリセット
     } else {
       setFormData(prev => ({ ...prev, maxMembers: 4, purpose: '練習', memberNames: [] }));
     }
@@ -46,6 +52,10 @@ export default function ReserveNewPage() {
       alert('代表者名を入力してください。');
       return;
     }
+    if (formData.lineNotify && (!formData.lineGroupIds || formData.lineGroupIds.length === 0)) { // ★ LINE通知がオンなのにグループIDがない場合
+      alert('LINEグループ通知がオンです。通知先のLINEグループIDを入力してください。');
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -54,6 +64,10 @@ export default function ReserveNewPage() {
       date: format(formData.date, 'yyyy-MM-dd'),
       purpose: isPrivate ? 'プライベート' : formData.purpose,
       maxMembers: isPrivate ? 1 : formData.maxMembers,
+      // lineNotify と lineGroupIds はペイロードから除外（データベースに保存しないため）
+      // 必要であれば、別途データベースに保存する設計も可能
+      lineNotify: undefined, // 送信しないようにundefinedを設定
+      lineGroupIds: undefined, // 送信しないようにundefinedを設定
     };
 
     const res = await fetch('/api/reservation', {
@@ -62,21 +76,47 @@ export default function ReserveNewPage() {
       body: JSON.stringify(payload),
     });
 
-    setIsSubmitting(false);
-
     if (res.ok) {
+      const result = await res.json();
       alert('予約を作成しました');
+
+      // ★ ここから追加: LINE通知がオンの場合、LINEメッセージ送信APIを呼び出す ★
+      if (!isPrivate && formData.lineNotify && formData.lineGroupIds && formData.lineGroupIds.length > 0) {
+          try {
+              await fetch('/api/line/send-message', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      reservationDetails: {
+                          id: result.id,
+                          date: format(formData.date, 'yyyy/MM/dd'),
+                          startTime: formData.startTime,
+                          maxMembers: formData.maxMembers,
+                          ownerName: formData.memberNames[0] || '名無し', // 募集者名（先頭のメンバー）
+                          purpose: formData.purpose,
+                      },
+                      lineGroupIds: formData.lineGroupIds,
+                  }),
+              });
+              console.log('LINE通知リクエストを送信しました');
+          } catch (lineError) {
+              console.error('LINE通知の送信に失敗しました:', lineError);
+              alert('LINE通知の送信に失敗しました。詳細はコンソールを確認してください。'); // 予約成功とは別に通知
+          }
+      }
+      // ★ ここまで追加 ★
+
       router.push('/');
       router.refresh();
     } else {
       const error = await res.json();
       alert(`予約作成失敗: ${error.error}`);
     }
+    setIsSubmitting(false);
   };
 
   return (
-    // --- ▼全体をContainerでラップ▼ ---
-    <Container maxWidth="sm" sx={{ py: 2 }}>
+    <Container maxWidth="sm" sx={{ py: 2}}>
       <Stack direction="row" alignItems="center" mb={2}>
         <IconButton onClick={() => router.back()}>
             <ArrowBackIcon />
@@ -108,6 +148,21 @@ export default function ReserveNewPage() {
         </Button>
       </Stack>
     </Container>
-    // --- ▲ここまで▲ ---
+  );
+}
+
+const LoadingFallback = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+    <CircularProgress />
+    <Typography sx={{ ml: 2 }}>フォームを読み込み中...</Typography>
+  </Box>
+);
+
+
+export default function ReserveNewPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ReserveNewForm />
+    </Suspense>
   );
 }
