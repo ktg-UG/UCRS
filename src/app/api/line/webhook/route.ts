@@ -5,8 +5,8 @@ export async function POST(req: NextRequest) {
   // LINEからのWebhookイベントを受け取るだけなので、
   // 現時点ではリクエストボディを処理する必要はありません。
   // ただし、ログに何が来ているか確認したい場合は以下の行を有効化できます。
-  // const body = await req.json();
-  // console.log('LINE Webhook received:', body);
+  const body = await req.json();
+  console.log("LINE Webhook received:", body);
 
   // LINEプラットフォームからの検証リクエストに対しては、
   // 常にステータスコード200を返す必要があります。
