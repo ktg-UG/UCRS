@@ -1,3 +1,4 @@
+// drizzle/schema.ts
 import { pgTable, serial, integer, date, time, jsonb, text } from "drizzle-orm/pg-core";
 
 // 既存のreservationsテーブル
@@ -11,8 +12,9 @@ export const reservations = pgTable("reservations", {
   purpose: text("purpose").notNull(),
 });
 
-// 新しいmembersテーブル
+// 新しいmembersテーブルにlineUserIdを追加
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(), // メンバー名は必須、かつ重複しない
+  lineUserId: text("line_user_id").unique(), // ★追加: LINEユーザーIDを保存するカラム (ユニーク制約付き)
 });
