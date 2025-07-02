@@ -12,8 +12,8 @@ export type ReservationFormData = {
   maxMembers: number;
   memberNames: string[];
   purpose: string;
-  lineNotify?: boolean; // ★ 追加: LINE通知のスイッチ
-  lineGroupIds?: string[]; // ★ 追加: 通知先のLINEグループID
+  lineNotify?: boolean;
+  lineGroupIds?: string[];
 };
 
 type Props = {
@@ -29,9 +29,33 @@ const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '
 const minuteOptions = ['00', '15', '30', '45'];
 const peopleOptions = [1, 2, 3, 4, 5, 6];
 
+// 環境変数からLINEグループIDを読み込む関数
+const getInitialLineGroupIds = (): string[] => {
+  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_LINE_GROUP_IDS) {
+    return process.env.NEXT_PUBLIC_LINE_GROUP_IDS.split(',').map(id => id.trim()).filter(id => id.length > 0);
+  }
+  return [];
+};
+
 export default function ReservationForm({ formData, setFormData, isPrivate, setIsPrivate, disabled = false, isEditMode = false }: Props) {
   const [allMembers, setAllMembers] = useState<string[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+
+  // コンポーネントの初回マウント時にLINEグループIDの初期値を設定
+  // isPrivateのuseEffectとは別に、初回のみ読み込む
+  useEffect(() => {
+    // フォームデータがまだ空で、環境変数にIDが設定されている場合のみ初期値を設定
+    if (formData.lineGroupIds === undefined || formData.lineGroupIds.length === 0) {
+      const initialIds = getInitialLineGroupIds();
+      if (initialIds.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          lineGroupIds: initialIds,
+          lineNotify: true, // 環境変数にIDがあれば、デフォルトで通知をONにする
+        }));
+      }
+    }
+  }, []); // 空の依存配列で初回のみ実行
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -76,8 +100,7 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
         </FormGroup>
       )}
       
-      {/* ★ ここから追加: LINE通知スイッチとグループID入力フィールド ★ */}
-      {!isPrivate && !isEditMode && ( // メンバー募集（プライベートではない）新規作成の場合のみ表示
+      {!isPrivate && !isEditMode && (
         <FormGroup>
           <FormControlLabel
             control={
@@ -95,14 +118,14 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
       {formData.lineNotify && !isPrivate && !isEditMode && (
         <TextField
           label="通知先のLINEグループID (カンマ区切り)"
+          // 環境変数が設定されていればそれを初期値として表示
           value={formData.lineGroupIds?.join(',') || ''}
-          onChange={(e) => handleChange('lineGroupIds', e.target.value.split(',').map(id => id.trim()))}
+          onChange={(e) => handleChange('lineGroupIds', e.target.value.split(',').map(id => id.trim()).filter(id => id.length > 0))}
           disabled={disabled}
           fullWidth
           helperText="募集を通知したいLINEグループのIDをカンマ区切りで入力してください。"
         />
       )}
-      {/* ★ ここまで追加 ★ */}
 
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography sx={{ minWidth: 60 }}>日付</Typography>
