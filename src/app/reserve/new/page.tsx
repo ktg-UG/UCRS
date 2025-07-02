@@ -11,7 +11,7 @@ import ReservationForm, { ReservationFormData } from '@/components/ReservationFo
 // --- ▼ フォームの本体となるクライアントコンポーネントを定義 ▼ ---
 function ReserveNewForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Suspenseの内側でフックを呼び出す
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
