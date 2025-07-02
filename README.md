@@ -1,6 +1,6 @@
-# UCRS (Unite Court Reserve) テニスサークルUnite専用コート予約システム
+# テニスサークルUnite専用コート予約システム UCRS
 
-UCRS (Unite Court Reserve) は、コート予約を管理するためのウェブアプリケーションです。カレンダー形式で予約状況を視覚的に確認し、新しい予約の作成、既存の予約の編集、削除ができます。
+UCRS (Unite Court Reserve System) は、コート予約を管理するためのウェブアプリケーションです。カレンダー形式で予約状況を視覚的に確認し、新しい予約の作成、既存の予約の編集、削除ができます。
 
 以下のURLから誰でもアクセスすることができます。
 https://ucrs-git-main-ktg-ugs-projects.vercel.app/?_vercel_share=30lMXNCc3IqnC3WVb3pMi5Drpoce3lhg
