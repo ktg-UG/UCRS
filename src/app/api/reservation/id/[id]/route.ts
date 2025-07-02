@@ -1,7 +1,7 @@
 // src/app/api/reservation/id/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
-import { reservations, members } from "@/../drizzle/schema"; // members スキーマをインポート/route.ts]
+import { reservations, members } from "@/../drizzle/schema";
 import { eq, ne, and } from 'drizzle-orm';
 
 // 時刻が15分単位かどうかをチェックするヘルパー関数
@@ -45,10 +45,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   try {
     const body = await request.json();
-    // ★ 追加されたフィールド: action, lineUserId, lineUserName (LINE参加ボタン用) ★
     const { startTime, endTime, purpose, maxMembers, memberNames, action, lineUserId, lineUserName } = body; 
 
-    // ★ LINEからの参加アクションの場合の処理 ★
+    // LINEからの参加アクションの場合の処理
     if (action === 'join') {
         if (!lineUserId || !lineUserName) {
             return NextResponse.json({ error: 'LINEユーザー情報が不足しています' }, { status: 400 });
@@ -61,12 +60,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         // 既にメンバーに含まれているか確認
         if (existingReservation.memberNames.includes(lineUserName)) {
-            // 既に存在する場合は成功とみなすが、更新は行わない
             return NextResponse.json({ message: '既に予約に参加しています', updatedReservation: existingReservation }, { status: 200 }); 
         }
 
         // 定員オーバーチェック
-        if (existingReservation.memberNames.length >= existingReservation.maxMembers) {
+        if (existingReservation.memberNames.length >= (existingReservation.maxMembers ?? 0)) { // ★修正点★
             return NextResponse.json({ error: '定員に達しているため参加できません' }, { status: 409 });
         }
 
@@ -74,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         // membersテーブルにLINEユーザー名を登録 (存在しない場合)
         // lineUserIdも一緒に保存
-        await db.insert(members).values({ name: lineUserName, lineUserId: lineUserId }).onConflictDoNothing();/route.ts]
+        await db.insert(members).values({ name: lineUserName, lineUserId: lineUserId }).onConflictDoNothing();
 
         const updatedReservation = await db.update(reservations)
             .set({ memberNames: updatedMemberNames })
@@ -85,23 +83,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             return NextResponse.json({ error: '参加登録対象の予約が見つかりません' }, { status: 404 });
         }
 
-        // ★ 代表者への通知（LINE Push Message）のロジックをここに追加 ★
-        // 現状では代表者のLINE UserIdを直接持っていないため、
-        // ここに実装する場合は、代表者のLINE UserIdを別途取得・管理する仕組みが必要です。
-        // 例: 予約作成時に代表者のLINE UserIdをmemberNamesと一緒に保存するか、
-        // membersテーブルのnameからlineUserIdを検索する
-        const representativeMember = await db.query.members.findFirst({
-            where: eq(members.name, existingReservation.memberNames[0]),
-            columns: { lineUserId: true } // lineUserIdのみを取得
-        });
+        // 代表者への通知（LINE Push Message）のロジック
+        const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        if (!LINE_CHANNEL_ACCESS_TOKEN) {
+            console.warn('LINE_CHANNEL_ACCESS_TOKENが設定されていないため、代表者への通知はスキップされました。');
+        } else {
+            const representativeMember = await db.query.members.findFirst({
+                where: eq(members.name, existingReservation.memberNames[0]),
+                columns: { lineUserId: true }
+            });
 
-        if (representativeMember && representativeMember.lineUserId) {
-            try {
-                // LINE Push Messageを送信するAPIを呼び出す（このAPIも別途実装が必要です）
-                const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN; // 環境変数を再取得
-                if (!LINE_CHANNEL_ACCESS_TOKEN) {
-                    console.warn('LINE_CHANNEL_ACCESS_TOKENが設定されていないため、代表者への通知はスキップされました。');
-                } else {
+            if (representativeMember && representativeMember.lineUserId) {
+                try {
                     await fetch('https://api.line.me/v2/bot/message/push', {
                         method: 'POST',
                         headers: {
@@ -117,17 +110,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                         }),
                     });
                     console.log(`代表者 (${representativeMember.lineUserId}) へ参加通知を送信しました。`);
+                } catch (pushError) {
+                    console.error('代表者へのLINE通知送信中にエラーが発生:', pushError);
                 }
-            } catch (pushError) {
-                console.error('代表者へのLINE通知送信中にエラーが発生:', pushError);
             }
         }
-        // ★ ここまで追加 ★
 
         return NextResponse.json(updatedReservation[0]);
 
     } else {
-        // ★ 既存の更新ロジック (ReservationFormからの編集保存) ★
+        // 既存の更新ロジック (ReservationFormからの編集保存)
         if (!startTime || !endTime || !maxMembers || !memberNames || !purpose) {
           return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
         }
@@ -154,8 +146,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         if (Array.isArray(memberNames) && memberNames.length > 0) {
             const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name);
             if (newMembers.length > 0) {
-                // ここではlineUserIdは不明なので、nameのみでonConflictDoNothing
-                await db.insert(members).values(newMembers).onConflictDoNothing();/route.ts, uploaded:ktg-ug/ucrs/UCRS-4d1f47117fe56774d85aac823ab0ed55a77ab337/src/app/api/reservation/route.ts]
+                await db.insert(members).values(newMembers).onConflictDoNothing();
             }
         }
 
