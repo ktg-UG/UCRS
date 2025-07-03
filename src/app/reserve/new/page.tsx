@@ -80,6 +80,7 @@ function ReserveNewForm() {
                           id: result.id,
                           date: format(formData.date, 'yyyy/MM/dd'),
                           startTime: formData.startTime,
+                          endTime: formData.endTime,
                           maxMembers: formData.maxMembers,
                           ownerName: formData.memberNames[0] || '名無し',
                           purpose: formData.purpose,
