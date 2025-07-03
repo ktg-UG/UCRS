@@ -12,8 +12,7 @@ export type ReservationFormData = {
   maxMembers: number;
   memberNames: string[];
   purpose: string;
-  lineNotify?: boolean;
-  lineGroupIds?: string[];
+  lineNotify?: boolean; // lineGroupIdsは不要なため削除
 };
 
 type Props = {
