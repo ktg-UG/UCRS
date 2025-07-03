@@ -29,32 +29,9 @@ const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '
 const minuteOptions = ['00', '15', '30', '45'];
 const peopleOptions = [1, 2, 3, 4, 5, 6];
 
-// 環境変数からLINEグループIDを読み込む関数
-const getEnvLineGroupIds = (): string[] => {
-  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_LINE_GROUP_IDS) {
-    return process.env.NEXT_PUBLIC_LINE_GROUP_IDS.split(',').map(id => id.trim()).filter(id => id.length > 0);
-  }
-  return [];
-};
-
 export default function ReservationForm({ formData, setFormData, isPrivate, setIsPrivate, disabled = false, isEditMode = false }: Props) {
   const [allMembers, setAllMembers] = useState<string[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
-
-  // 初回マウント時にLINEグループIDの初期値を設定
-  useEffect(() => {
-    const initialIds = getEnvLineGroupIds();
-    if (initialIds.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        // 環境変数にIDがあれば、デフォルトで通知をONにする
-        // ただし、既にlineNotifyがfalseに設定されている場合は上書きしない
-        lineNotify: prev.lineNotify === undefined ? true : prev.lineNotify,
-        // lineGroupIdsは環境変数から常に設定（表示はしないが内部的に持つ）
-        lineGroupIds: initialIds,
-      }));
-    }
-  }, []); // 空の依存配列で初回のみ実行
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -108,10 +85,6 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
                 checked={formData.lineNotify || false}
                 onChange={(e) => {
                   handleChange('lineNotify', e.target.checked);
-                  // LINE通知をONにした際に、lineGroupIdsが未設定なら環境変数から設定
-                  if (e.target.checked && (!formData.lineGroupIds || formData.lineGroupIds.length === 0)) {
-                    handleChange('lineGroupIds', getEnvLineGroupIds());
-                  }
                 }}
                 disabled={disabled}
               />
@@ -120,9 +93,6 @@ export default function ReservationForm({ formData, setFormData, isPrivate, setI
           />
         </FormGroup>
       )}
-
-      {/* グループID入力フィールドは表示しない */}
-      {/* 以前あったTextFieldコンポーネントを削除 */}
 
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography sx={{ minWidth: 60 }}>日付</Typography>
