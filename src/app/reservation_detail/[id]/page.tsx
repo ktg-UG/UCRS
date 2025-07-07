@@ -6,7 +6,6 @@ import { ReservationEvent } from '@/types';
 import { Box, Typography, Button, Stack, CircularProgress, Container, List, ListItem, ListItemText, Divider, IconButton, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-// LIFFの型定義
 declare const liff: any;
 
 export default function ReservationDetailPage() {
@@ -18,7 +17,6 @@ export default function ReservationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [liffError, setLiffError] = useState<string | null>(null);
   const [lineProfile, setLineProfile] = useState<{ userId: string; displayName: string } | null>(null);
 
@@ -35,13 +33,11 @@ export default function ReservationDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    // LIFF IDが設定されていない場合は処理を中断
     if (!process.env.NEXT_PUBLIC_LIFF_ID) {
-        setLiffError('LIFF IDが設定されていません。環境変数を確認してください。');
-        setLoading(false);
-        return;
+      setLiffError('LIFF IDが設定されていません。環境変数を確認してください。');
+      setLoading(false);
+      return;
     }
-    
     const initializeLiff = async () => {
       try {
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID });
@@ -71,7 +67,6 @@ export default function ReservationDetailPage() {
 
   const handleJoin = async () => {
     if (!reservation || !lineProfile) return;
-
     if (reservation.memberNames.includes(lineProfile.displayName)) {
       alert('既に参加済みです。');
       return;
@@ -80,9 +75,7 @@ export default function ReservationDetailPage() {
       alert('申し訳ありません、定員に達しています。');
       return;
     }
-
     setIsSubmitting(true);
-    
     try {
       const res = await fetch(`/api/reservation/id/${id}`, {
         method: 'PUT',
@@ -93,7 +86,6 @@ export default function ReservationDetailPage() {
           lineUserName: lineProfile.displayName,
         }),
       });
-
       if (res.ok) {
         alert('参加登録が完了しました！');
         await fetchReservation();
@@ -120,9 +112,7 @@ export default function ReservationDetailPage() {
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <Stack direction="row" alignItems="center" mb={2}>
-        <IconButton onClick={() => router.push('/')}>
-          <ArrowBackIcon />
-        </IconButton>
+        <IconButton onClick={() => liff.closeWindow()}><ArrowBackIcon /></IconButton>
         <Typography variant="h5" sx={{ flexGrow: 1, textAlign: 'center' }}>募集詳細</Typography>
         <Box sx={{ width: 40 }} />
       </Stack>

@@ -15,23 +15,22 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ReservationEvent } from '@/types';
 
-// 予約の状況に応じて色を返すヘルパー関数 (カレンダーと共通)
 const getReservationColor = (
   memberCount: number,
   maxMembers: number,
   purpose: string | undefined
 ): string => {
   if (purpose === 'プライベート') {
-    return '#f44336'; // 赤色
+    return '#f44336';
   }
   const spotsLeft = maxMembers - memberCount;
   if (spotsLeft <= 0) {
-    return '#66bb6a'; // 満員 (緑)
+    return '#66bb6a';
   }
   if (spotsLeft === 1) {
-    return '#ffa726'; // 残り1人 (オレンジ)
+    return '#ffa726';
   }
-  return '#ffeb3b'; // 空きあり (黄)
+  return '#ffeb3b';
 };
 
 type Props = {
@@ -43,7 +42,6 @@ type Props = {
 
 export default function BottomSheet({ date, events, onClose, onDelete }: Props) {
   const router = useRouter();
-
   const [openDialog, setOpenDialog] = useState(false);
   const [targetEventId, setTargetEventId] = useState<number | null>(null);
 
@@ -54,7 +52,6 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
     const selectedDate = new Date(date);
     return selectedDate < today;
   }, [date]);
-
 
   const handleOpenDeleteDialog = (id: number, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -69,12 +66,10 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
 
   const handleDeleteConfirm = async () => {
     if (!targetEventId) return;
-
     try {
       const res = await fetch(`/api/reservation/id/${targetEventId}`, {
         method: 'DELETE',
       });
-
       if (res.ok) {
         onDelete(targetEventId);
         alert('予約を取り消しました。');
@@ -117,7 +112,6 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
               <Button onClick={onClose} sx={{ ml: 1 }}>閉じる</Button>
             </Box>
           </Box>
-
           {sortedEvents.length > 0 ? (
             sortedEvents.map((event) => (
               <Box
@@ -136,7 +130,8 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                   },
                 }}
               >
-                <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reservation_detail/${event.id}`)}>
+                {/* ★ リンク先をWebサイト用の `/reserve/[id]` に修正 ★ */}
+                <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
                   {event.purpose !== 'プライベート' && (
                      <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
@@ -161,15 +156,12 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
           )}
         </Box>
       </Drawer>
-
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>予約の取り消し確認</DialogTitle>
         <DialogContent>
-          {/* --- ▼ここを修正▼ --- */}
           <DialogContentText>
             この予約を本当にとり消しますか？この操作は元に戻せません。
           </DialogContentText>
-          {/* --- ▲ここまで修正▲ --- */}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>キャンセル</Button>
