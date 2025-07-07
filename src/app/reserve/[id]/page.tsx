@@ -1,159 +1,152 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { format } from 'date-fns';
-import { Box, Typography, Button, Stack, IconButton, CircularProgress, Container } from '@mui/material'; // Containerをインポート
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ReservationForm, { ReservationFormData } from '@/components/ReservationForm';
 import { ReservationEvent } from '@/types';
+import { Box, Typography, Button, Stack, CircularProgress, Container, List, ListItem, ListItemText, Divider, IconButton, Alert } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-export default function ReserveDetailPage() {
+// LIFFの型定義
+declare const liff: any;
+
+export default function ReservationDetailPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const id = pathname.split('/').pop();
+  const id = pathname?.split('/').pop();
 
-  const [editMode, setEditMode] = useState(false);
+  const [reservation, setReservation] = useState<ReservationEvent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [liffError, setLiffError] = useState<string | null>(null);
+  const [lineProfile, setLineProfile] = useState<{ userId: string; displayName: string } | null>(null);
 
-  const [formData, setFormData] = useState<ReservationFormData>({
-    date: null,
-    startTime: '09:00',
-    endTime: '12:00',
-    maxMembers: 1,
-    memberNames: [],
-    purpose: '',
-  });
-
-  useEffect(() => {
-    if (id) {
-      const fetchDetail = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const response = await fetch(`/api/reservation/id/${id}`);
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'データの取得に失敗しました');
-          }
-          const data: ReservationEvent = await response.json();
-
-          setIsPrivate(data.purpose === 'プライベート');
-
-          setFormData({
-            startTime: data.startTime,
-            endTime: data.endTime,
-            maxMembers: data.maxMembers,
-            memberNames: data.memberNames,
-            purpose: data.purpose || '',
-            date: new Date(data.date + 'T00:00:00'),
-          });
-        } catch (err: any) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchDetail();
+  const fetchReservation = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/reservation/id/${id}`);
+      if (!response.ok) throw new Error('予約情報の取得に失敗しました');
+      const data: ReservationEvent = await response.json();
+      setReservation(data);
+    } catch (err: any) {
+      setError(err.message);
     }
   }, [id]);
 
-  const handleSave = async () => {
-    if (!formData.date) return;
+  useEffect(() => {
+    const initializeLiff = async () => {
+      try {
+        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+        if (!liff.isLoggedIn()) {
+          liff.login(); // ログインしていなければログイン画面に遷移
+        } else {
+          const profile = await liff.getProfile();
+          setLineProfile({
+            userId: profile.userId,
+            displayName: profile.displayName,
+          });
+        }
+      } catch (e: any) {
+        console.error('LIFF initialization failed', e);
+        setLiffError('LINE連携に失敗しました。LINEアプリ内のブラウザで開いてください。');
+        setLoading(false);
+      }
+    };
+    initializeLiff();
+  }, []);
+
+  useEffect(() => {
+    // LIFFのプロフィールが取得できたら予約情報を取得
+    if (lineProfile) {
+      fetchReservation().finally(() => setLoading(false));
+    }
+  }, [lineProfile, fetchReservation]);
+
+  const handleJoin = async () => {
+    if (!reservation || !lineProfile) return;
+
+    if (reservation.memberNames.includes(lineProfile.displayName)) {
+      alert('既に参加済みです。');
+      return;
+    }
+    if (reservation.maxMembers && reservation.memberNames.length >= reservation.maxMembers) {
+      alert('申し訳ありません、定員に達しています。');
+      return;
+    }
+
     setIsSubmitting(true);
     
-    const payload = {
-        ...formData,
-        date: format(formData.date, 'yyyy-MM-dd'),
-    };
-
     try {
       const res = await fetch(`/api/reservation/id/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          action: 'join',
+          lineUserId: lineProfile.userId,
+          lineUserName: lineProfile.displayName,
+        }),
       });
 
       if (res.ok) {
-        alert('予約を更新しました');
-        setEditMode(false);
-        router.refresh();
+        alert('参加登録が完了しました！');
+        await fetchReservation(); // 最新情報に更新
       } else {
         const errorData = await res.json();
-        alert(`更新失敗: ${errorData.error}`);
+        alert(`参加登録に失敗しました: ${errorData.error}`);
       }
     } catch (err) {
-      alert('更新処理中にエラーが発生しました');
+      alert('参加処理中にエラーが発生しました。');
+      console.error(err);
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-
-  const handleDelete = async () => {
-    if (window.confirm('本当にこの募集を削除しますか？')) {
-      try {
-        const res = await fetch(`/api/reservation/id/${id}`, { method: 'DELETE' });
-        if(res.ok) {
-            alert('募集を削除しました');
-            router.push('/');
-            router.refresh();
-        } else {
-            const error = await res.json();
-            alert(`削除失敗: ${error.error}`);
-        }
-      } catch (err) {
-        alert('削除処理中にエラーが発生しました');
-      }
-    }
-  };
-
+  
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
-  if (error) return <Typography color="error" align="center" p={4}>エラー: {error}</Typography>;
+  if (liffError) return <Container sx={{py:2}}><Alert severity="error">{liffError}</Alert></Container>;
+  if (error) return <Container sx={{py:2}}><Alert severity="error">エラー: {error}</Alert></Container>;
+  if (!reservation) return <Typography align="center" p={4}>指定された予約は見つかりませんでした。</Typography>;
+
+  const isFull = reservation.maxMembers && reservation.memberNames.length >= reservation.maxMembers;
+  const isAlreadyJoined = lineProfile ? reservation.memberNames.includes(lineProfile.displayName) : false;
 
   return (
-    // --- ▼全体をContainerでラップ▼ ---
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <Stack direction="row" alignItems="center" mb={2}>
-         <IconButton onClick={() => router.back()}>
-            <ArrowBackIcon />
+        <IconButton onClick={() => router.push('/')}>
+          <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h5" sx={{ flexGrow: 1, textAlign: 'center' }}>
-            募集詳細
-        </Typography>
+        <Typography variant="h5" sx={{ flexGrow: 1, textAlign: 'center' }}>募集詳細</Typography>
         <Box sx={{ width: 40 }} />
       </Stack>
-
-      <ReservationForm
-        formData={formData}
-        setFormData={setFormData}
-        isPrivate={isPrivate}
-        disabled={!editMode}
-        isEditMode={true}
-      />
-
-      <Stack spacing={2} mt={3}>
-        {!editMode ? (
-          <Button fullWidth variant="contained" onClick={() => setEditMode(true)}>
-            編集する
-          </Button>
-        ) : (
-          <>
-            <Button fullWidth variant="contained" color="primary" onClick={handleSave} disabled={isSubmitting}>
-              {isSubmitting ? <CircularProgress size={24} /> : 'この内容で保存する'}
-            </Button>
-            <Button fullWidth variant="outlined" color="secondary" onClick={() => setEditMode(false)}>
-              キャンセル
-            </Button>
-          </>
-        )}
-        <Button fullWidth variant="contained" color="error" onClick={handleDelete} sx={{ mt: 1 }}>
-          この募集を削除する
-        </Button>
+      <Stack spacing={2}>
+        <Typography variant="h6">日付: {reservation.date}</Typography>
+        <Typography variant="h6">時間: {reservation.startTime.slice(0, 5)} 〜 {reservation.endTime.slice(0, 5)}</Typography>
+        <Typography variant="h6">目的: {reservation.purpose}</Typography>
       </Stack>
+      <Divider sx={{ my: 3 }} />
+      <Typography variant="h6">メンバー ({reservation.memberNames.length} / {reservation.maxMembers || 'N/A'}人)</Typography>
+      <List>
+        {reservation.memberNames.map((name, index) => (
+          <ListItem key={index}><ListItemText primary={name} /></ListItem>
+        ))}
+        {reservation.memberNames.length === 0 && (
+          <ListItem><ListItemText primary="まだ参加者がいません" sx={{ color: 'text.secondary' }} /></ListItem>
+        )}
+      </List>
+      <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Button 
+          variant="contained" 
+          size="large" 
+          onClick={handleJoin}
+          disabled={isFull || isAlreadyJoined || isSubmitting}
+        >
+          {isSubmitting ? <CircularProgress size={24} color="inherit" /> :
+           isAlreadyJoined ? '参加済みです' :
+           isFull ? '定員です' : `「${lineProfile?.displayName || ''}」として参加する`}
+        </Button>
+      </Box>
     </Container>
-    // --- ▲ここまで▲ ---
   );
 }

@@ -16,5 +16,5 @@ export const reservations = pgTable("reservations", {
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(), // メンバー名は必須、かつ重複しない
-  // lineUserId: text("line_user_id").unique() の行を削除
+  lineUserId: text("line_user_id").unique(),
 });

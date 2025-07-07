@@ -14,6 +14,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.8/main.min.css"
           rel="stylesheet"
         />
+        {/* ★ LIFF SDKのスクリプトタグを追加 ★ */}
+        <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charSet="utf-8" async></script>
       </head>
       <body>
         <Providers>
