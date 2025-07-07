@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Typography, Box, Button, Stack, Container } from '@mui/material';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Typography, Box, Button, Stack, Container, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import Calendar from '@/components/Calendar';
 import BottomSheet from '@/components/BottomSheet';
@@ -10,10 +10,23 @@ import { ReservationEvent } from '@/types';
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [allEvents, setAllEvents] = useState<ReservationEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // --- ★ LIFFリダイレクト処理を追加 ★ ---
   useEffect(() => {
+    const liffState = searchParams.get('liff.state');
+    if (liffState) {
+      // liff.stateパラメータがあれば、そのパスにリダイレクト
+      router.replace(liffState);
+      // この場合はカレンダーデータの読み込みは不要なので、ここで処理を中断
+      return;
+    }
+    
+    // --- 通常のデータ取得処理 ---
     const fetchAllEvents = async () => {
       try {
         const response = await fetch('/api/reservation'); 
@@ -22,10 +35,14 @@ export default function HomePage() {
         setAllEvents(data);
       } catch (error) {
         console.error("Failed to fetch all events:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
+    
     fetchAllEvents();
-  }, []);
+  }, [searchParams, router]);
+  // --- ★ ここまで修正 ★ ---
 
   const selectedEvents = selectedDate
     ? allEvents.filter(event => event.date === selectedDate)
@@ -43,6 +60,16 @@ export default function HomePage() {
   const handleNewReservation = () => {
     router.push('/reserve/new');
   };
+  
+  // リダイレクト処理中、またはデータ取得中はローディング画面を表示
+  if (isLoading || searchParams.get('liff.state')) {
+    return (
+        <Container maxWidth="md" sx={{ py: 2, textAlign: 'center' }}>
+            <CircularProgress />
+            <Typography>読み込み中...</Typography>
+        </Container>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
