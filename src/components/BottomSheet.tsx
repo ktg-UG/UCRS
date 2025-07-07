@@ -136,7 +136,7 @@ export default function BottomSheet({ date, events, onClose, onDelete }: Props) 
                   },
                 }}
               >
-                <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reserve/${event.id}`)}>
+                <Box sx={{ flexGrow: 1 }} onClick={() => router.push(`/reservation_detail/${event.id}`)}>
                   <div>🕒 {event.startTime.slice(0, 5)}〜{event.endTime.slice(0, 5)}</div>
                   {event.purpose !== 'プライベート' && (
                      <div>👥 {event.memberNames.length} / {event.maxMembers}人</div>
