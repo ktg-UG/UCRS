@@ -70,6 +70,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         const updatedMemberNames = [...existingReservation.memberNames, lineUserName];
 
         // membersテーブルにLINEユーザー情報を登録または更新(UPSERT)
+        // 誰かが名前を変えた場合でも、同じLINEユーザーIDなら名前を更新する
         await db.insert(members)
             .values({ name: lineUserName, lineUserId: lineUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: lineUserName } });
@@ -105,17 +106,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         return NextResponse.json({ error: `定員(${maxMembers}人)を超えています。` }, { status: 409 });
     }
     
-    const existingReservations = await db.select().from(reservations).where(and(eq(reservations.date, reservationToUpdate.date), ne(reservations.id, reservationId)));
+    const existingReservationsOnDate = await db.select().from(reservations).where(and(eq(reservations.date, reservationToUpdate.date), ne(reservations.id, reservationId)));
     const newStart = new Date(`1970-01-01T${startTime}`);
     const newEnd = new Date(`1970-01-01T${endTime}`);
-    if (existingReservations.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
+    if (existingReservationsOnDate.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
       return NextResponse.json({ error: '指定された時間帯は既に他の予約と重複しています' }, { status: 409 });
     }
 
+    // 編集フォームから送信されたメンバー名もmembersテーブルに登録しておく
     if (Array.isArray(memberNames) && memberNames.length > 0) {
-        const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name);
+        const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name.length > 0);
         if (newMembers.length > 0) {
-            await db.insert(members).values(newMembers).onConflictDoNothing({target: members.name});
+            // lineUserIdがないメンバーなので、名前をキーにON CONFLICT DO NOTHINGする
+            // (注: 同姓同名がいると最初の1人しか登録されないが、現状の仕様では許容)
+            await db.insert(members).values(newMembers).onConflictDoNothing();
         }
     }
 
