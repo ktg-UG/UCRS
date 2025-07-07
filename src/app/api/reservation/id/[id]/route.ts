@@ -1,4 +1,3 @@
-// src/app/api/reservation/id/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
 import { reservations, members } from "@/../drizzle/schema";
@@ -54,24 +53,32 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         if (!lineUserId || !lineUserName) {
             return NextResponse.json({ error: 'LINEユーザー情報が不足しています' }, { status: 400 });
         }
+
         const existingReservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
         if (!existingReservation) {
             return NextResponse.json({ error: '指定された予約が見つかりません' }, { status: 404 });
         }
+
         if (existingReservation.memberNames.includes(lineUserName)) {
             return NextResponse.json({ message: '既に参加済みです' }, { status: 200 });
         }
         if (existingReservation.maxMembers && existingReservation.memberNames.length >= existingReservation.maxMembers) {
             return NextResponse.json({ error: '定員に達しているため参加できません' }, { status: 409 });
         }
+
         const updatedMemberNames = [...existingReservation.memberNames, lineUserName];
+
+        // membersテーブルにLINEユーザー情報を登録または更新(UPSERT)
         await db.insert(members)
             .values({ name: lineUserName, lineUserId: lineUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: lineUserName } });
+
+        // reservationsテーブルの参加者リストを更新
         const [updatedReservation] = await db.update(reservations)
             .set({ memberNames: updatedMemberNames })
             .where(eq(reservations.id, reservationId))
             .returning();
+
         return NextResponse.json(updatedReservation);
     }
     
@@ -86,6 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (startTime >= endTime) {
       return NextResponse.json({ error: '終了時刻は開始時刻より後に設定してください' }, { status: 400 });
     }
+
     const reservationToUpdate = await db.query.reservations.findFirst({
         where: eq(reservations.id, reservationId),
     });
@@ -95,23 +103,27 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (memberNames.length > maxMembers) {
         return NextResponse.json({ error: `定員(${maxMembers}人)を超えています。` }, { status: 409 });
     }
+    
     const existingReservationsOnDate = await db.select().from(reservations).where(and(eq(reservations.date, reservationToUpdate.date), ne(reservations.id, reservationId)));
     const newStart = new Date(`1970-01-01T${startTime}`);
     const newEnd = new Date(`1970-01-01T${endTime}`);
     if (existingReservationsOnDate.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
       return NextResponse.json({ error: '指定された時間帯は既に他の予約と重複しています' }, { status: 409 });
     }
+
     if (Array.isArray(memberNames) && memberNames.length > 0) {
         const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name.length > 0);
         if (newMembers.length > 0) {
             await db.insert(members).values(newMembers).onConflictDoNothing();
         }
     }
+
     const [updatedReservation] = await db.update(reservations).set({ startTime, endTime, maxMembers, memberNames, purpose }).where(eq(reservations.id, reservationId)).returning();
     if (!updatedReservation) {
       return NextResponse.json({ error: '更新対象の予約が見つかりません' }, { status: 404 });
     }
     return NextResponse.json(updatedReservation);
+
   } catch (error) {
     console.error('予約データの更新に失敗:', error);
     const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
