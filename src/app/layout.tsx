@@ -1,8 +1,9 @@
 import { ReactNode } from 'react';
 import Providers from '@/components/Providers';
+import ClientLayout from '@/components/ClientLayout'; // ClientLayoutをインポート
 
 export const metadata = {
-  title: 'カレンダー',
+  title: 'Unite Court Reserve',
   icons: { icon: '/favicon.ico' },
 };
 
@@ -10,16 +11,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <head>
-        <link
-          href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.8/main.min.css"
-          rel="stylesheet"
-        />
-        {/* ★ LIFF SDKのスクリプトタグを追加 ★ */}
-        <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charSet="utf-8" async></script>
+        {/* LIFF SDKのスクリプトは不要になったので削除 */}
       </head>
       <body>
         <Providers>
-          {children}
+          <ClientLayout>
+            {children}
+          </ClientLayout>
         </Providers>
       </body>
     </html>
