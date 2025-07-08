@@ -9,9 +9,7 @@ const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 async function getLineProfile(userId: string): Promise<{ displayName: string } | null> {
   try {
     const response = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
-      },
+      headers: { 'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` },
     });
     if (!response.ok) {
       console.error('Failed to get LINE profile:', await response.text());
@@ -24,19 +22,23 @@ async function getLineProfile(userId: string): Promise<{ displayName: string } |
   }
 }
 
-// LINEに応答メッセージを送信する関数
-async function replyToLine(replyToken: string, text: string) {
-  await fetch('https://api.line.me/v2/bot/message/reply', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
-    },
-    body: JSON.stringify({
-      replyToken: replyToken,
-      messages: [{ type: 'text', text: text }],
-    }),
-  });
+// ★★★ 特定のユーザーにプッシュメッセージを送信する関数 ★★★
+async function sendPushMessage(userId: string, text: string) {
+  try {
+    await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        to: userId,
+        messages: [{ type: 'text', text }],
+      }),
+    });
+  } catch (error) {
+    console.error('Error sending push message:', error);
+  }
 }
 
 // Webhookのメイン処理
@@ -46,56 +48,49 @@ export async function POST(req: NextRequest) {
     const events = body.events || [];
 
     for (const event of events) {
-      // ★★★ ポストバックイベントを処理するロジック ★★★
       if (event.type === 'postback') {
         const postbackData = new URLSearchParams(event.postback.data);
         const action = postbackData.get('action');
         const reservationId = Number(postbackData.get('reservationId'));
-        const userId = event.source.userId;
-        const replyToken = event.replyToken;
+        const newParticipantUserId = event.source.userId; // 参加ボタンを押した人のID
 
-        if (action === 'join' && reservationId && userId) {
-          // 1. ユーザーのLINEプロフィールを取得
-          const profile = await getLineProfile(userId);
-          if (!profile) {
-            await replyToLine(replyToken, 'エラー：LINEプロフィールの取得に失敗しました。');
-            continue; // 次のイベントへ
-          }
-          const userName = profile.displayName;
+        if (action === 'join' && reservationId && newParticipantUserId) {
+          // 1. 参加者のLINEプロフィールを取得
+          const profile = await getLineProfile(newParticipantUserId);
+          if (!profile) continue;
+          const newParticipantName = profile.displayName;
 
-          // 2. データベースで予約情報を更新
-          const existingReservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
-          if (!existingReservation) {
-            await replyToLine(replyToken, 'エラー：指定された募集が見つかりませんでした。');
-            continue;
-          }
-          if (existingReservation.memberNames.includes(userName)) {
-            await replyToLine(replyToken, `${userName}さんは既に参加済みです！`);
-            continue;
-          }
-          if (existingReservation.maxMembers && existingReservation.memberNames.length >= existingReservation.maxMembers) {
-            await replyToLine(replyToken, '申し訳ありません、定員に達したため参加できませんでした。');
-            continue;
-          }
+          // 2. データベースで予約情報を取得・チェック
+          const reservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
+          if (!reservation) continue;
+          if (reservation.memberNames.includes(newParticipantName)) continue; // 既に参加済み
+          if (reservation.maxMembers && reservation.memberNames.length >= reservation.maxMembers) continue; // 定員オーバー
 
           // 3. 参加者リストを更新
-          const updatedMemberNames = [...existingReservation.memberNames, userName];
+          const updatedMemberNames = [...reservation.memberNames, newParticipantName];
           await db.update(reservations)
             .set({ memberNames: updatedMemberNames })
             .where(eq(reservations.id, reservationId));
 
-          // 4. membersテーブルにも情報を保存
+          // 4. 新しい参加者の情報をmembersテーブルに保存
           await db.insert(members)
-            .values({ name: userName, lineUserId: userId })
-            .onConflictDoUpdate({ target: members.lineUserId, set: { name: userName } });
+            .values({ name: newParticipantName, lineUserId: newParticipantUserId })
+            .onConflictDoUpdate({ target: members.lineUserId, set: { name: newParticipantName } });
 
-          // 5. 成功メッセージを返信
-          await replyToLine(replyToken, `${userName}さんの参加を受け付けました！`);
+          // 5. ★★★ 募集者の個人LINEに通知を送信 ★★★
+          if (reservation.memberNames.length > 0) {
+            const ownerName = reservation.memberNames[0]; // 最初のメンバーを募集者とみなす
+            // 募集者のlineUserIdをmembersテーブルから検索
+            const owner = await db.query.members.findFirst({ where: eq(members.name, ownerName) });
+
+            if (owner?.lineUserId) {
+              const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${reservation.date} ${reservation.startTime.slice(0,5)}〜」に参加しました！`;
+              await sendPushMessage(owner.lineUserId, notificationText);
+            }
+          }
         }
       }
-      // (ここにテキストメッセージへの応答など、他のイベント処理も追加可能)
     }
-
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
     console.error('Webhook Error:', error);

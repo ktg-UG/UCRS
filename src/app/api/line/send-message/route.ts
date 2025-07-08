@@ -54,8 +54,6 @@ export async function POST(req: NextRequest) {
             label: '参加する',
             // このデータがWebhookに送信される
             data: `action=join&reservationId=${reservationDetails.id}`,
-            // ユーザーに表示されるテキスト
-            displayText: '参加します！',
           },
           {
             // ★★★ 「詳細」ボタンはLIFFページへのリンクとして残す ★★★
