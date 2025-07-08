@@ -5,8 +5,12 @@ import { eq } from 'drizzle-orm';
 
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
+// ★★★ 連打防止用のリクエスト管理ストア ★★★
+// 同じリクエストが短時間に来た場合に処理を1回に制限するためのもの
+const processingRequests = new Map<string, boolean>();
+
 // LINEのプロフィール取得APIを呼び出す関数
-async function getLineProfile(userId: string): Promise<{ displayName: string } | null> {
+async function getLineProfile(userId: string): Promise<{ displayName:string } | null> {
   try {
     const response = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
       headers: { 'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` },
@@ -55,6 +59,22 @@ export async function POST(req: NextRequest) {
         const newParticipantUserId = event.source.userId;
 
         if (action === 'join' && reservationId) {
+          // ★★★ 連打防止ロジックの開始 ★★★
+          const requestId = `join-${newParticipantUserId}-${reservationId}`; // リクエストを特定するユニークなID
+          
+          // このリクエストが既に処理中であれば、何もしないで終了
+          if (processingRequests.has(requestId)) {
+            console.log(`Request ${requestId} is already being processed. Skipping.`);
+            continue; 
+          }
+
+          // リクエストの処理を開始したことを記録（15秒間のロック）
+          processingRequests.set(requestId, true);
+          setTimeout(() => {
+            processingRequests.delete(requestId);
+          }, 15000); // 15秒後にロックを解除
+          // ★★★ 連打防止ロジックの終了 ★★★
+
           const profile = await getLineProfile(newParticipantUserId);
           if (!profile) continue;
           
@@ -84,10 +104,8 @@ export async function POST(req: NextRequest) {
             .values({ name: newParticipantName, lineUserId: newParticipantUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: newParticipantName } });
           
-          // 参加者本人への完了通知（Push Message）
           await sendPushMessage(newParticipantUserId, '参加を受け付けました！');
 
-          // 募集者への通知（Push Message）
           if (reservation.memberNames.length > 0) {
             const ownerName = reservation.memberNames[0];
             const owner = await db.query.members.findFirst({ where: eq(members.name, ownerName) });
