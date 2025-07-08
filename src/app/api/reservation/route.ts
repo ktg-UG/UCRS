@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
-import { reservations, members } from "@/../drizzle/schema"; // members スキーマをインポート
+import { reservations, members } from "@/../drizzle/schema"; 
 import { eq } from 'drizzle-orm';
 
 const isMultipleOf15Minutes = (time: string): boolean => {
@@ -51,16 +51,6 @@ export async function POST(request: NextRequest) {
     if (existingReservations.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
       return NextResponse.json({ error: '指定された時間帯は既に他の予約と重複しています' }, { status: 409 });
     }
-
-    // --- ▼ここから追加 ▼ ---
-    // 送信されたメンバー名がmembersテーブルになければ登録する
-    if (Array.isArray(memberNames) && memberNames.length > 0) {
-        const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name);
-        if (newMembers.length > 0) {
-            await db.insert(members).values(newMembers).onConflictDoNothing();
-        }
-    }
-    // --- ▲ここまで追加 ▲ ---
 
     const result = await db.insert(reservations).values({ date, startTime, endTime, maxMembers, memberNames, purpose }).returning();
     return NextResponse.json(result[0], { status: 201 });

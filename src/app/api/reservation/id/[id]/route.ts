@@ -53,32 +53,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         if (!lineUserId || !lineUserName) {
             return NextResponse.json({ error: 'LINEユーザー情報が不足しています' }, { status: 400 });
         }
-
         const existingReservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
         if (!existingReservation) {
             return NextResponse.json({ error: '指定された予約が見つかりません' }, { status: 404 });
         }
-
         if (existingReservation.memberNames.includes(lineUserName)) {
             return NextResponse.json({ message: '既に参加済みです' }, { status: 200 });
         }
         if (existingReservation.maxMembers && existingReservation.memberNames.length >= existingReservation.maxMembers) {
             return NextResponse.json({ error: '定員に達しているため参加できません' }, { status: 409 });
         }
-
         const updatedMemberNames = [...existingReservation.memberNames, lineUserName];
-
-        // membersテーブルにLINEユーザー情報を登録または更新(UPSERT)
         await db.insert(members)
             .values({ name: lineUserName, lineUserId: lineUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: lineUserName } });
-
-        // reservationsテーブルの参加者リストを更新
         const [updatedReservation] = await db.update(reservations)
             .set({ memberNames: updatedMemberNames })
             .where(eq(reservations.id, reservationId))
             .returning();
-
         return NextResponse.json(updatedReservation);
     }
     
@@ -109,13 +101,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const newEnd = new Date(`1970-01-01T${endTime}`);
     if (existingReservationsOnDate.some(e => new Date(`1970-01-01T${e.startTime}`) < newEnd && new Date(`1970-01-01T${e.endTime}`) > newStart)) {
       return NextResponse.json({ error: '指定された時間帯は既に他の予約と重複しています' }, { status: 409 });
-    }
-
-    if (Array.isArray(memberNames) && memberNames.length > 0) {
-        const newMembers = memberNames.map(name => ({ name: name.trim() })).filter(m => m.name.length > 0);
-        if (newMembers.length > 0) {
-            await db.insert(members).values(newMembers).onConflictDoNothing();
-        }
     }
 
     const [updatedReservation] = await db.update(reservations).set({ startTime, endTime, maxMembers, memberNames, purpose }).where(eq(reservations.id, reservationId)).returning();
