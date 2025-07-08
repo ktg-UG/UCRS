@@ -22,42 +22,20 @@ async function getLineProfile(userId: string): Promise<{ displayName: string } |
   }
 }
 
-// ★★★ 応答メッセージを送信する関数（Reply Message）★★★
-async function replyToLine(replyToken: string, text: string) {
-  try {
-    const response = await fetch('https://api.line.me/v2/bot/message/reply', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify({
-        replyToken: replyToken,
-        messages: [{ type: 'text', text: text }],
-      }),
-    });
-    if (!response.ok) {
-        console.error('Failed to reply to LINE:', await response.text());
-    }
-  } catch(error) {
-      console.error('Error in replyToLine:', error);
-  }
-}
-
 // 特定のユーザーにプッシュメッセージを送信する関数
 async function sendPushMessage(userId: string, text: string) {
   try {
-    await fetch('https://api.line.me/v2/bot/message/push', {
+    const response = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
       },
-      body: JSON.stringify({
-        to: userId,
-        messages: [{ type: 'text', text }],
-      }),
+      body: JSON.stringify({ to: userId, messages: [{ type: 'text', text }] }),
     });
+    if (!response.ok) {
+        console.error('Failed to send push message:', await response.text());
+    }
   } catch (error) {
     console.error('Error sending push message:', error);
   }
@@ -70,33 +48,30 @@ export async function POST(req: NextRequest) {
     const events = body.events || [];
 
     for (const event of events) {
-      if (event.type === 'postback' && event.source.userId && event.replyToken) {
+      if (event.type === 'postback' && event.source.userId) {
         const postbackData = new URLSearchParams(event.postback.data);
         const action = postbackData.get('action');
         const reservationId = Number(postbackData.get('reservationId'));
         const newParticipantUserId = event.source.userId;
-        const replyToken = event.replyToken;
 
         if (action === 'join' && reservationId) {
           const profile = await getLineProfile(newParticipantUserId);
-          if (!profile) {
-            await replyToLine(replyToken, 'エラー：LINEプロフィールの取得に失敗しました。');
-            continue;
-          }
+          if (!profile) continue;
+          
           const newParticipantName = profile.displayName;
 
           const reservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
           if (!reservation) {
-            await replyToLine(replyToken, 'エラー：指定された募集が見つかりませんでした。');
+            await sendPushMessage(newParticipantUserId, 'エラー：指定された募集が見つかりませんでした。');
             continue;
           }
 
           if (reservation.memberNames.includes(newParticipantName)) {
-            await replyToLine(replyToken, 'あなたは既にこの募集に参加済みです！');
+            await sendPushMessage(newParticipantUserId, 'あなたは既にこの募集に参加済みです！');
             continue;
           }
           if (reservation.maxMembers && reservation.memberNames.length >= reservation.maxMembers) {
-            await replyToLine(replyToken, '申し訳ありません、定員に達したため参加できませんでした。');
+            await sendPushMessage(newParticipantUserId, '申し訳ありません、定員に達したため参加できませんでした。');
             continue;
           }
 
@@ -109,9 +84,10 @@ export async function POST(req: NextRequest) {
             .values({ name: newParticipantName, lineUserId: newParticipantUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: newParticipantName } });
           
-          // ★★★ 参加者本人への完了通知 ★★★
-          await replyToLine(replyToken, '参加を受け付けました！');
+          // 参加者本人への完了通知（Push Message）
+          await sendPushMessage(newParticipantUserId, '参加を受け付けました！');
 
+          // 募集者への通知（Push Message）
           if (reservation.memberNames.length > 0) {
             const ownerName = reservation.memberNames[0];
             const owner = await db.query.members.findFirst({ where: eq(members.name, ownerName) });
