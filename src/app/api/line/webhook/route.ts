@@ -22,6 +22,28 @@ async function getLineProfile(userId: string): Promise<{ displayName: string } |
   }
 }
 
+// ★★★ 応答メッセージを送信する関数（Reply Message）★★★
+async function replyToLine(replyToken: string, text: string) {
+  try {
+    const response = await fetch('https://api.line.me/v2/bot/message/reply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        replyToken: replyToken,
+        messages: [{ type: 'text', text: text }],
+      }),
+    });
+    if (!response.ok) {
+        console.error('Failed to reply to LINE:', await response.text());
+    }
+  } catch(error) {
+      console.error('Error in replyToLine:', error);
+  }
+}
+
 // 特定のユーザーにプッシュメッセージを送信する関数
 async function sendPushMessage(userId: string, text: string) {
   try {
@@ -45,74 +67,59 @@ async function sendPushMessage(userId: string, text: string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('Webhook received:', JSON.stringify(body, null, 2)); // 1. 受信したデータをログに出力
     const events = body.events || [];
 
     for (const event of events) {
-      if (event.type === 'postback') {
-        console.log('Postback event received.'); // 2. ポストバックイベントを検知
+      if (event.type === 'postback' && event.source.userId && event.replyToken) {
         const postbackData = new URLSearchParams(event.postback.data);
         const action = postbackData.get('action');
         const reservationId = Number(postbackData.get('reservationId'));
         const newParticipantUserId = event.source.userId;
+        const replyToken = event.replyToken;
 
-        console.log(`Action: ${action}, ReservationID: ${reservationId}, ParticipantID: ${newParticipantUserId}`); // 3. データをパース
-
-        if (action === 'join' && reservationId && newParticipantUserId) {
-          console.log('Processing "join" action.'); // 4. 参加処理を開始
-
+        if (action === 'join' && reservationId) {
           const profile = await getLineProfile(newParticipantUserId);
           if (!profile) {
-            console.error('Failed to get profile for user:', newParticipantUserId);
-            continue; // プロフィールが取れなければ中断
+            await replyToLine(replyToken, 'エラー：LINEプロフィールの取得に失敗しました。');
+            continue;
           }
           const newParticipantName = profile.displayName;
-          console.log('Participant Name:', newParticipantName); // 5. 参加者の名前を取得
 
           const reservation = await db.query.reservations.findFirst({ where: eq(reservations.id, reservationId) });
           if (!reservation) {
-            console.error('Reservation not found for ID:', reservationId);
-            continue; // 予約が見つからなければ中断
+            await replyToLine(replyToken, 'エラー：指定された募集が見つかりませんでした。');
+            continue;
           }
-          console.log('Found reservation:', reservation); // 6. 予約情報を取得
 
           if (reservation.memberNames.includes(newParticipantName)) {
-            console.log('User is already a member. Aborting.'); // 7a. 参加済みなら中断
+            await replyToLine(replyToken, 'あなたは既にこの募集に参加済みです！');
             continue;
           }
           if (reservation.maxMembers && reservation.memberNames.length >= reservation.maxMembers) {
-            console.log('Reservation is full. Aborting.'); // 7b. 満員なら中断
+            await replyToLine(replyToken, '申し訳ありません、定員に達したため参加できませんでした。');
             continue;
           }
 
-          console.log('Adding user to reservation.'); // 8. 更新処理を開始
           const updatedMemberNames = [...reservation.memberNames, newParticipantName];
           await db.update(reservations)
             .set({ memberNames: updatedMemberNames })
             .where(eq(reservations.id, reservationId));
-          console.log('Reservation updated in DB.');
 
           await db.insert(members)
             .values({ name: newParticipantName, lineUserId: newParticipantUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: newParticipantName } });
-          console.log('Members table updated.');
+          
+          // ★★★ 参加者本人への完了通知 ★★★
+          await replyToLine(replyToken, '参加を受け付けました！');
 
           if (reservation.memberNames.length > 0) {
             const ownerName = reservation.memberNames[0];
-            console.log('Attempting to notify owner:', ownerName); // 9. 代表者への通知処理を開始
-
             const owner = await db.query.members.findFirst({ where: eq(members.name, ownerName) });
-            if (owner?.lineUserId) {
-              console.log('Found owner lineUserId:', owner.lineUserId); // 10a. 代表者のIDを発見
+
+            if (owner?.lineUserId && owner.lineUserId !== newParticipantUserId) {
               const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${reservation.date} ${reservation.startTime.slice(0,5)}〜」に参加しました！`;
               await sendPushMessage(owner.lineUserId, notificationText);
-              console.log('Push message sent to owner.');
-            } else {
-              // ★★★ おそらくここで処理が終わっている可能性が高いです ★★★
-              console.error('Could not find lineUserId for owner:', ownerName, '. Owner object:', owner);
             }
-          } else {
-            console.log('Reservation has no members, cannot determine owner.');
           }
         }
       }
