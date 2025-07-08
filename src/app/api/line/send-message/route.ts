@@ -49,18 +49,16 @@ export async function POST(req: NextRequest) {
         text: textForLine,
         actions: [
           {
-            // ★★★ 「参加する」ボタンをポストバックアクションに変更 ★★★
             type: 'postback',
             label: '参加する',
-            // このデータがWebhookに送信される
             data: `action=join&reservationId=${reservationDetails.id}`,
+            // 「参加します！」というメッセージは表示しない
           },
           {
-            // ★★★ 「詳細」ボタンはLIFFページへのリンクとして残す ★★★
             type: 'uri',
             label: '詳細を見る',
-            // LIFFページへのリンク（参加ボタンはないページとして活用）
-            uri: `${NEXT_PUBLIC_APP_BASE_URL}/reservation_detail/${reservationDetails.id}`,
+            // ★★★ リンク先をWebサイト用の詳細ページに変更 ★★★
+            uri: `${NEXT_PUBLIC_APP_BASE_URL}/reserve/${reservationDetails.id}`,
           },
         ],
       },
