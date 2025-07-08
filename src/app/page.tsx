@@ -105,7 +105,7 @@ function HomePageContent() {
               border: "1px solid #ccc",
             }}
           />
-          <Typography variant="body2">プライベート</Typography>
+          <Typography variant="body2">ボールのみ予約</Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
           <Box

@@ -1,3 +1,4 @@
+// src/components/ReservationForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -16,6 +17,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -32,8 +35,8 @@ export type ReservationFormData = {
 type Props = {
   formData: ReservationFormData;
   setFormData: React.Dispatch<React.SetStateAction<ReservationFormData>>;
-  isPrivate: boolean;
-  setIsPrivate?: React.Dispatch<React.SetStateAction<boolean>>;
+  reservationType: string;
+  setReservationType?: (value: string) => void;
   disabled?: boolean;
   isEditMode?: boolean;
 };
@@ -42,13 +45,14 @@ const hourOptions = Array.from({ length: 24 }, (_, i) =>
   String(i).padStart(2, "0")
 );
 const minuteOptions = ["00", "15", "30", "45"];
-const peopleOptions = [1, 2, 3, 4, 5, 6];
+// ★ 定員の選択肢を定義（「ボールのみ予約」で利用する1人も追加）
+const peopleOptions = ["定員なし", "1人", "2人", "3人", "4人", "5人", "6人"];
 
 export default function ReservationForm({
   formData,
   setFormData,
-  isPrivate,
-  setIsPrivate,
+  reservationType,
+  setReservationType,
   disabled = false,
   isEditMode = false,
 }: Props) {
@@ -72,9 +76,35 @@ export default function ReservationForm({
     fetchMembers();
   }, []);
 
+  const handleReservationTypeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newType: string | null
+  ) => {
+    if (newType !== null && setReservationType) {
+      setReservationType(newType);
+    }
+  };
+
   const handleChange = (field: keyof ReservationFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+  
+  // ★ 定員の選択肢（文字列）を数値に変換してstateを更新する関数
+  const handleMaxMembersChange = (value: string) => {
+    if (value === "定員なし") {
+      handleChange("maxMembers", 99); // 定員なしは99として扱う
+    } else {
+      handleChange("maxMembers", parseInt(value, 10));
+    }
+  };
+  
+  // ★ 定員の数値（state）を表示用の文字列に変換する関数
+  const getMaxMembersLabel = (value: number): string => {
+      if (value === 99) {
+          return "定員なし";
+      }
+      return `${value}人`;
+  }
 
   const handleTimeChange = (
     timeField: "startTime" | "endTime",
@@ -102,20 +132,21 @@ export default function ReservationForm({
 
   return (
     <Stack spacing={3}>
-      {!isEditMode && setIsPrivate && (
-        <FormGroup>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isPrivate}
-                onChange={(e) => setIsPrivate(e.target.checked)}
-              />
-            }
-            label={isPrivate ? "プライベート予約" : "メンバー募集"}
-          />
-        </FormGroup>
+      {!isEditMode && setReservationType && (
+        <ToggleButtonGroup
+          color="primary"
+          value={reservationType}
+          exclusive
+          onChange={handleReservationTypeChange}
+          aria-label="予約タイプ"
+          fullWidth
+        >
+          <ToggleButton value="メンバー募集">メンバー募集</ToggleButton>
+          <ToggleButton value="ボールのみ予約">ボールのみ予約</ToggleButton>
+        </ToggleButtonGroup>
       )}
-      {!isPrivate && !isEditMode && (
+
+      {reservationType === "メンバー募集" && !isEditMode && (
         <FormGroup>
           <FormControlLabel
             control={
@@ -220,7 +251,7 @@ export default function ReservationForm({
         </TextField>
       </Stack>
 
-      {isPrivate ? (
+      {reservationType === "ボールのみ予約" ? (
         <Stack direction="row" alignItems="center" spacing={1}>
           <Typography sx={{ minWidth: 60 }}>代表者</Typography>
           <TextField
@@ -233,24 +264,24 @@ export default function ReservationForm({
         </Stack>
       ) : (
         <>
+          {/* ★★★ 定員選択部分のロジックを修正 ★★★ */}
           <Stack direction="row" alignItems="center" spacing={1}>
             <Typography sx={{ minWidth: 60 }}>定員</Typography>
             <TextField
               select
               disabled={disabled}
-              value={formData.maxMembers}
-              onChange={(e) =>
-                handleChange("maxMembers", Number(e.target.value))
-              }
-              sx={{ minWidth: 100 }}
+              value={getMaxMembersLabel(formData.maxMembers)}
+              onChange={(e) => handleMaxMembersChange(e.target.value)}
+              sx={{ minWidth: 120 }}
             >
-              {peopleOptions.map((num) => (
-                <MenuItem key={num} value={num}>
-                  {num}人
+              {peopleOptions.map((opt) => (
+                <MenuItem key={opt} value={opt}>
+                  {opt}
                 </MenuItem>
               ))}
             </TextField>
           </Stack>
+          {/* ★★★ ここまで修正 ★★★ */}
 
           <Autocomplete
             multiple
@@ -273,7 +304,6 @@ export default function ReservationForm({
                 placeholder="リストから選択"
               />
             )}
-            // ★★★ この一行を追加 ★★★
             renderTags={() => null}
           />
 
