@@ -5,12 +5,19 @@ import { eq } from 'drizzle-orm';
 
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
-// ★★★ 連打防止用のリクエスト管理ストア ★★★
-// 同じリクエストが短時間に来た場合に処理を1回に制限するためのもの
-const processingRequests = new Map<string, boolean>();
+// ★★★ 日付フォーマット用のヘルパー関数を追加 ★★★
+const formatJapaneseDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
+  } catch (e) {
+    return dateString;
+  }
+};
 
-// LINEのプロフィール取得APIを呼び出す関数
-async function getLineProfile(userId: string): Promise<{ displayName:string } | null> {
+async function getLineProfile(userId: string): Promise<{ displayName: string } | null> {
   try {
     const response = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
       headers: { 'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` },
@@ -26,7 +33,6 @@ async function getLineProfile(userId: string): Promise<{ displayName:string } | 
   }
 }
 
-// 特定のユーザーにプッシュメッセージを送信する関数
 async function sendPushMessage(userId: string, text: string) {
   try {
     const response = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -45,7 +51,6 @@ async function sendPushMessage(userId: string, text: string) {
   }
 }
 
-// Webhookのメイン処理
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -59,21 +64,12 @@ export async function POST(req: NextRequest) {
         const newParticipantUserId = event.source.userId;
 
         if (action === 'join' && reservationId) {
-          // ★★★ 連打防止ロジックの開始 ★★★
-          const requestId = `join-${newParticipantUserId}-${reservationId}`; // リクエストを特定するユニークなID
-          
-          // このリクエストが既に処理中であれば、何もしないで終了
+          const requestId = `join-${newParticipantUserId}-${reservationId}`;
           if (processingRequests.has(requestId)) {
-            console.log(`Request ${requestId} is already being processed. Skipping.`);
-            continue; 
+            continue;
           }
-
-          // リクエストの処理を開始したことを記録（15秒間のロック）
           processingRequests.set(requestId, true);
-          setTimeout(() => {
-            processingRequests.delete(requestId);
-          }, 15000); // 15秒後にロックを解除
-          // ★★★ 連打防止ロジックの終了 ★★★
+          setTimeout(() => processingRequests.delete(requestId), 15000);
 
           const profile = await getLineProfile(newParticipantUserId);
           if (!profile) continue;
@@ -104,14 +100,19 @@ export async function POST(req: NextRequest) {
             .values({ name: newParticipantName, lineUserId: newParticipantUserId })
             .onConflictDoUpdate({ target: members.lineUserId, set: { name: newParticipantName } });
           
-          await sendPushMessage(newParticipantUserId, '参加を受け付けました！');
+          // ★★★ 参加者本人への完了通知メッセージを修正 ★★★
+          const formattedDate = formatJapaneseDate(reservation.date);
+          const startTime = reservation.startTime.slice(0, 5);
+          const confirmationText = `${formattedDate}${startTime}からのコート予約メンバーに参加しました！`;
+          await sendPushMessage(newParticipantUserId, confirmationText);
 
+          // 募集者への通知
           if (reservation.memberNames.length > 0) {
             const ownerName = reservation.memberNames[0];
             const owner = await db.query.members.findFirst({ where: eq(members.name, ownerName) });
 
             if (owner?.lineUserId && owner.lineUserId !== newParticipantUserId) {
-              const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${reservation.date} ${reservation.startTime.slice(0,5)}〜」に参加しました！`;
+              const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${reservation.date} ${startTime}〜」に参加しました！`;
               await sendPushMessage(owner.lineUserId, notificationText);
             }
           }
@@ -124,3 +125,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+const processingRequests = new Map<string, boolean>();
