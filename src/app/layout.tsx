@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import Providers from '@/components/Providers';
 import ClientLayout from '@/components/ClientLayout';
-import { LiffProvider } from '@/contexts/LiffContext'; // 作成したLiffProviderをインポート
 
 export const metadata = {
   title: 'Unite Court Reserve',
@@ -11,14 +10,15 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
-      <head></head>
+      <head>
+        {/* LIFF SDKのscriptタグを削除 */}
+      </head>
       <body>
         <Providers>
-          <LiffProvider> {/* ★ LiffProviderで囲む ★ */}
-            <ClientLayout>
-              {children}
-            </ClientLayout>
-          </LiffProvider>
+          {/* LiffProviderを削除し、ClientLayoutのみにする */}
+          <ClientLayout>
+            {children}
+          </ClientLayout>
         </Providers>
       </body>
     </html>

@@ -20,7 +20,7 @@ const getReservationColor = (
   maxMembers: number,
   purpose: string | undefined
 ): string => {
-  if (purpose === 'プライベート') {
+  if (purpose === 'ボール予約') {
     return '#f44336';
   }
   const spotsLeft = maxMembers - memberCount;
