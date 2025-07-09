@@ -1,3 +1,5 @@
+// src/app/page.tsx
+
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -82,6 +84,23 @@ function HomePageContent() {
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
+      {/********************** ↓ここから変更 **********************/}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => router.push("/contact")}
+          sx={{
+            // 画面サイズに応じて、ボタンのpaddingとfont-sizeを調整
+            px: { xs: 1.5, sm: 2 }, // xs: mobile, sm: tablet以上
+            py: { xs: 0.5, sm: 1 },
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+          }}
+        >
+          お問い合わせ
+        </Button>
+      </Box>
+      {/********************** ↑ここまで変更 **********************/}
       <Typography variant="h4" component="h1" align="center" sx={{ mb: 2 }}>
         Unite Court Reserve
       </Typography>
@@ -147,6 +166,7 @@ function HomePageContent() {
 
       <Calendar events={allEvents} onDateSelect={handleDateSelect} />
 
+      {/********************** ↓ここを変更 **********************/}
       <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
         <Button
           variant="contained"
@@ -157,7 +177,9 @@ function HomePageContent() {
         >
           新規予約を作成
         </Button>
+        {/* 元のお問い合わせボタンは削除 */}
       </Box>
+      {/********************** ↑ここまで変更 **********************/}
 
       <BottomSheet
         date={selectedDate}
