@@ -14,7 +14,7 @@ import AddIcon from "@mui/icons-material/Add";
 import Calendar from "@/components/Calendar";
 import BottomSheet from "@/components/BottomSheet";
 import SpecialEventDialog from "@/components/SpecialEventDialog";
-import { ReservationEvent, SpecialEvent, CombinedEvent } from "@/types";
+import { ReservationEvent, SpecialEvent, CombinedEvent } from "@/types"; // 型をインポート
 import { useAdmin } from "@/contexts/AdminContext";
 
 function HomePageContent() {
@@ -71,20 +71,9 @@ function HomePageContent() {
     setSelectedDate(date);
   };
 
-  const handleEventDelete = (
-    deletedEventId: number,
-    type: "reservation" | "special_event"
-  ) => {
+  const handleEventDelete = (deletedEventId: number) => {
     setAllEvents((prevEvents) =>
-      prevEvents.filter((event) => {
-        if (event.type === "reservation" && type === "reservation") {
-          return event.id !== deletedEventId;
-        }
-        if (event.type !== "reservation" && type === "special_event") {
-          return event.id !== deletedEventId;
-        }
-        return true;
-      })
+      prevEvents.filter((event) => event.id !== deletedEventId)
     );
     setSelectedDate(null);
   };
@@ -92,6 +81,12 @@ function HomePageContent() {
   const handleNewReservation = () => {
     router.push("/reserve/new");
   };
+
+  // ボトムシートに渡す予約イベントのみをフィルタリング
+  const reservationEventsForSheet = allEvents.filter(
+    (event): event is ReservationEvent =>
+      event.type === "reservation" && event.date === selectedDate
+  );
 
   if (isLoading || searchParams.get("liff.state")) {
     return (
