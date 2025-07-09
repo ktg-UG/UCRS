@@ -29,6 +29,7 @@ export type ReservationFormData = {
   maxMembers: number;
   memberNames: string[];
   purpose: string;
+  comment?: string; // commentプロパティを追加
   lineNotify?: boolean;
 };
 
@@ -45,7 +46,6 @@ const hourOptions = Array.from({ length: 24 }, (_, i) =>
   String(i).padStart(2, "0")
 );
 const minuteOptions = ["00", "15", "30", "45"];
-// ★ 定員の選択肢を定義（「ボールのみ予約」で利用する1人も追加）
 const peopleOptions = ["定員なし", "1人", "2人", "3人", "4人", "5人", "6人"];
 
 export default function ReservationForm({
@@ -89,16 +89,14 @@ export default function ReservationForm({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ★ 定員の選択肢（文字列）を数値に変換してstateを更新する関数
   const handleMaxMembersChange = (value: string) => {
     if (value === "定員なし") {
-      handleChange("maxMembers", 99); // 定員なしは99として扱う
+      handleChange("maxMembers", 99);
     } else {
       handleChange("maxMembers", parseInt(value, 10));
     }
   };
 
-  // ★ 定員の数値（state）を表示用の文字列に変換する関数
   const getMaxMembersLabel = (value: number): string => {
     if (value === 99) {
       return "定員なし";
@@ -264,7 +262,6 @@ export default function ReservationForm({
         </Stack>
       ) : (
         <>
-          {/* ★★★ 定員選択部分のロジックを修正 ★★★ */}
           <Stack direction="row" alignItems="center" spacing={1}>
             <Typography sx={{ minWidth: 60 }}>定員</Typography>
             <TextField
@@ -281,7 +278,6 @@ export default function ReservationForm({
               ))}
             </TextField>
           </Stack>
-          {/* ★★★ ここまで修正 ★★★ */}
 
           <Autocomplete
             multiple
@@ -350,6 +346,21 @@ export default function ReservationForm({
           </Stack>
         </>
       )}
+
+      {/* ↓↓↓ ここから追加 ↓↓↓ */}
+      <Stack direction="column" spacing={1}>
+        <Typography sx={{ minWidth: 60 }}>コメント</Typography>
+        <TextField
+          fullWidth
+          multiline
+          rows={3}
+          value={formData.comment || ""}
+          disabled={disabled}
+          onChange={(e) => handleChange("comment", e.target.value)}
+          placeholder="連絡事項などあれば記入してください"
+        />
+      </Stack>
+      {/* ↑↑↑ ここまで追加 ↑↑↑ */}
     </Stack>
   );
 }

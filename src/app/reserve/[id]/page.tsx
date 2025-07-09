@@ -28,8 +28,6 @@ export default function ReserveDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ★ isPrivate の代わりに予約タイプを管理する
   const [reservationType, setReservationType] = useState("メンバー募集");
 
   const [formData, setFormData] = useState<ReservationFormData>({
@@ -39,6 +37,7 @@ export default function ReserveDetailPage() {
     maxMembers: 1,
     memberNames: [],
     purpose: "",
+    comment: "", // stateに初期値を追加
   });
 
   useEffect(() => {
@@ -53,7 +52,6 @@ export default function ReserveDetailPage() {
             throw new Error(errorData.error || "データの取得に失敗しました");
           }
           const data: ReservationEvent = await response.json();
-          // ★ purpose から reservationType を設定
           setReservationType(
             data.purpose === "ボールのみ予約"
               ? "ボールのみ予約"
@@ -62,6 +60,7 @@ export default function ReserveDetailPage() {
           setFormData({
             ...data,
             purpose: data.purpose || "",
+            comment: data.comment || "", // 取得したデータをセット
             date: new Date(data.date + "T00:00:00"),
           });
         } catch (err: any) {
@@ -88,7 +87,7 @@ export default function ReserveDetailPage() {
       if (res.ok) {
         alert("予約を更新しました");
         setEditMode(false);
-        router.refresh(); // ホーム画面をリロードさせる
+        router.refresh(); 
       } else {
         const errorData = await res.json();
         alert(`更新失敗: ${errorData.error}`);
@@ -147,8 +146,8 @@ export default function ReserveDetailPage() {
       <ReservationForm
         formData={formData}
         setFormData={setFormData}
-        reservationType={reservationType} // isPrivateの代わりにreservationTypeを渡す
-        setReservationType={setReservationType} // 編集画面でもタイプ変更を可能にする
+        reservationType={reservationType}
+        setReservationType={setReservationType}
         disabled={!editMode}
         isEditMode={true}
       />

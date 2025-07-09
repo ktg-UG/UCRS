@@ -8,8 +8,9 @@ export const reservations = pgTable("reservations", {
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
   maxMembers: integer("max_members"),
-  memberNames: jsonb("member_names").notNull().$type<string[]>(),
+  memberNames: jsonb("member_names").notNull(),
   purpose: text("purpose").notNull(),
+  comment: text("comment"), 
 });
 
 // membersテーブルから lineUserId を削除

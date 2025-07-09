@@ -6,4 +6,5 @@ export type ReservationEvent = {
   maxMembers: number;
   memberNames: string[];
   purpose?: string;
+  comment?: string;
 };

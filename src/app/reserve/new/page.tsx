@@ -18,10 +18,10 @@ function ReserveNewForm() {
     date: null,
     startTime: '09:00',
     endTime: '12:00',
-    // ★★★ maxMembersの初期値を99（定員なし）に変更 ★★★
     maxMembers: 99,
     memberNames: [],
     purpose: '練習',
+    comment: '', // stateに初期値を追加
     lineNotify: true,
   });
 
@@ -42,7 +42,6 @@ function ReserveNewForm() {
         lineNotify: false 
       }));
     } else {
-      // ★★★ メンバー募集に戻した際も、デフォルトを99（定員なし）に設定 ★★★
       setFormData(prev => ({ 
         ...prev, 
         maxMembers: 99, 
@@ -95,6 +94,7 @@ function ReserveNewForm() {
                           maxMembers: formData.maxMembers,
                           ownerName: formData.memberNames[0] || '名無し',
                           purpose: formData.purpose,
+                          comment: formData.comment, // 通知にもコメントを追加
                       },
                   }),
               });
