@@ -1,37 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
 import { specialEvents } from "@/../drizzle/schema";
-import { eq } from "drizzle-orm";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// DELETE: IDに基づいて特別イベントを削除
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const eventId = Number(params.id);
-
-  if (isNaN(eventId)) {
-    return NextResponse.json({ error: "無効なID形式です" }, { status: 400 });
-  }
-
+// GET: すべての特別イベントを取得
+export async function GET() {
   try {
-    const deletedEvents = await db
-      .delete(specialEvents)
-      .where(eq(specialEvents.id, eventId))
-      .returning({ deletedId: specialEvents.id });
+    const data = await db.select().from(specialEvents);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("特別イベントの取得に失敗:", error);
+    return NextResponse.json(
+      { error: "サーバーエラーが発生しました" },
+      { status: 500 }
+    );
+  }
+}
 
-    if (deletedEvents.length === 0) {
+// POST: 新しい特別イベントを作成
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { type, date, eventName, memo } = body;
+
+    // バリデーション
+    if (!type || !date) {
       return NextResponse.json(
-        { error: "削除対象のイベントが見つかりません" },
-        { status: 404 }
+        { error: "タイプと日付は必須です。" },
+        { status: 400 }
+      );
+    }
+    if (type === "event" && !eventName) {
+      return NextResponse.json(
+        { error: "イベント名を入力してください。" },
+        { status: 400 }
       );
     }
 
-    return NextResponse.json({ message: "イベントを削除しました" });
+    const newEvent = await db
+      .insert(specialEvents)
+      .values({
+        type,
+        date,
+        eventName,
+        memo,
+      })
+      .returning();
+
+    return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
-    console.error("特別イベントの削除に失敗:", error);
+    console.error("特別イベントの作成に失敗:", error);
     return NextResponse.json(
       { error: "サーバーエラーが発生しました" },
       { status: 500 }
