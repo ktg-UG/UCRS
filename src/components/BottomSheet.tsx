@@ -15,10 +15,10 @@ import {
   DialogTitle,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { CombinedEvent, ReservationEvent, SpecialEvent } from "@/types"; // 型をインポート
-import SpecialEventDetailDialog from "./SpecialEventDetailDialog"; // 作成したコンポーネントをインポート
+import { CombinedEvent, ReservationEvent, SpecialEvent } from "@/types";
+import SpecialEventDetailDialog from "./SpecialEventDetailDialog";
+import { useAdmin } from "@/contexts/AdminContext";
 
-// イベントの色分けロジック (カレンダーと共通)
 const getEventColor = (event: CombinedEvent): string => {
   switch (event.type) {
     case "new_balls":
@@ -38,9 +38,9 @@ const getEventColor = (event: CombinedEvent): string => {
 
 type Props = {
   date: string | null;
-  events: CombinedEvent[]; // すべてのイベントを受け取るように型を変更
+  events: CombinedEvent[];
   onClose: () => void;
-  onDelete: (eventId: number) => void;
+  onDelete: (eventId: number, type: "reservation" | "special_event") => void;
 };
 
 export default function BottomSheet({
@@ -50,14 +50,10 @@ export default function BottomSheet({
   onDelete,
 }: Props) {
   const router = useRouter();
+  const { isAdmin } = useAdmin();
 
-  // 予約削除ダイアログ用のState
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [targetReservationId, setTargetReservationId] = useState<number | null>(
-    null
-  );
-
-  // イベント詳細ダイアログ用のState
+  const [targetEvent, setTargetEvent] = useState<CombinedEvent | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedSpecialEvent, setSelectedSpecialEvent] =
     useState<SpecialEvent | null>(null);
@@ -70,28 +66,35 @@ export default function BottomSheet({
   }, [date]);
 
   const handleOpenDeleteDialog = (
-    id: number,
+    event: CombinedEvent,
     e: MouseEvent<HTMLButtonElement>
   ) => {
     e.stopPropagation();
-    setTargetReservationId(id);
+    setTargetEvent(event);
     setDeleteDialogOpen(true);
   };
 
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
-    setTargetReservationId(null);
+    setTargetEvent(null);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!targetReservationId) return;
+    if (!targetEvent) return;
+
+    const isReservation = targetEvent.type === "reservation";
+    const endpoint = isReservation
+      ? `/api/reservation/id/${targetEvent.id}`
+      : `/api/special-events/${targetEvent.id}`;
+
     try {
-      const res = await fetch(`/api/reservation/id/${targetReservationId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(endpoint, { method: "DELETE" });
       if (res.ok) {
-        onDelete(targetReservationId);
-        alert("予約を取り消しました。");
+        onDelete(
+          targetEvent.id,
+          isReservation ? "reservation" : "special_event"
+        );
+        alert("予定を削除しました。");
       } else {
         const error = await res.json();
         alert(`削除に失敗しました: ${error.error}`);
@@ -108,7 +111,6 @@ export default function BottomSheet({
     onClose();
   };
 
-  // イベントをクリックした時の処理
   const handleEventClick = (event: CombinedEvent) => {
     if (event.type === "reservation") {
       router.push(`/reserve/${event.id}`);
@@ -116,10 +118,8 @@ export default function BottomSheet({
       setSelectedSpecialEvent(event);
       setDetailDialogOpen(true);
     }
-    // 'new_balls' はクリックしても何もしない
   };
 
-  // イベントの並び替え（特別イベントを上、予約を時間順に）
   const sortedEvents = [...events].sort((a, b) => {
     if (a.type !== "reservation" && b.type === "reservation") return -1;
     if (a.type === "reservation" && b.type !== "reservation") return 1;
@@ -166,7 +166,7 @@ export default function BottomSheet({
                   color: "#333",
                   marginBottom: "8px",
                   borderRadius: "4px",
-                  cursor: event.type !== "new_balls" ? "pointer" : "default", // 新球入荷はクリック不可
+                  cursor: event.type !== "new_balls" ? "pointer" : "default",
                   "&:hover": {
                     opacity: event.type !== "new_balls" ? 0.8 : 1,
                   },
@@ -192,15 +192,17 @@ export default function BottomSheet({
                     <Typography>📝 {event.eventName}</Typography>
                   )}
                 </Box>
-                {event.type === "reservation" && !isPastDate && (
+                {/* ↓↓↓ ここから修正 ↓↓↓ */}
+                {!isPastDate && (event.type === "reservation" || isAdmin) && (
                   <IconButton
                     aria-label="delete"
                     size="small"
-                    onClick={(e) => handleOpenDeleteDialog(event.id, e)}
+                    onClick={(e) => handleOpenDeleteDialog(event, e)}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 )}
+                {/* ↑↑↑ ここまで修正 ↑↑↑ */}
               </Box>
             ))
           ) : (
@@ -211,12 +213,11 @@ export default function BottomSheet({
         </Box>
       </Drawer>
 
-      {/* 予約削除確認ダイアログ */}
       <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>予約の取り消し確認</DialogTitle>
+        <DialogTitle>予定の削除確認</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            この予約を本当にとり消しますか？この操作は元に戻せません。
+            この予定を本当に削除しますか？この操作は元に戻せません。
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -227,7 +228,6 @@ export default function BottomSheet({
         </DialogActions>
       </Dialog>
 
-      {/* イベント詳細ダイアログ */}
       <SpecialEventDetailDialog
         event={selectedSpecialEvent}
         open={detailDialogOpen}
