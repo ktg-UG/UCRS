@@ -1,42 +1,55 @@
-'use client';
+"use client";
 
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
-import { EventClickArg } from '@fullcalendar/core';
-import jaLocale from '@fullcalendar/core/locales/ja';
-import { ReservationEvent } from '@/types';
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
+import { EventClickArg } from "@fullcalendar/core";
+import jaLocale from "@fullcalendar/core/locales/ja";
+import { CombinedEvent } from "@/types"; // 型をCombinedEventに変更
 
 type Props = {
-  events: ReservationEvent[];
+  events: CombinedEvent[];
   onDateSelect: (dateStr: string) => void;
 };
 
-const getReservationColor = (
-  memberCount: number,
-  maxMembers: number,
-  purpose: string | undefined
-): string => {
-  if (purpose === 'ボールのみ予約') {
-    return '#f44336'; // 赤色
+const getEventColor = (event: CombinedEvent): string => {
+  // `type` プロパティを使ってイベントの種類を判別
+  switch (event.type) {
+    case "new_balls":
+      return "#a5d6a7"; // 黄緑
+    case "event":
+      return "#e0e0e0"; // 灰色
+    case "reservation":
+      if (event.purpose === "ボールのみ予約") return "#f44336"; // 赤
+      const spotsLeft = event.maxMembers - event.memberNames.length;
+      if (spotsLeft <= 0) return "#4caf50"; // 満員 (緑)
+      if (spotsLeft === 1) return "#ffa726"; // 残り1人 (オレンジ)
+      return "#ffeb3b"; // 空きあり (黄)
+    default:
+      return "#e0e0e0"; // 想定外のイベントは灰色
   }
-  const spotsLeft = maxMembers - memberCount;
-  if (spotsLeft <= 0) {
-    return '#66bb6a'; // 満員 (緑)
-  }
-  if (spotsLeft === 1) {
-    return '#ffa726'; // 残り1人 (オレンジ)
-  }
-  return '#ffeb3b'; // 空きあり (黄)
 };
 
-export default function Calendar({ events: reservationEvents, onDateSelect }: Props) {
-  
-  const calendarEvents = reservationEvents.map(event => {
-    const eventColor = getReservationColor(event.memberNames.length, event.maxMembers, event.purpose);
+export default function Calendar({ events: allEvents, onDateSelect }: Props) {
+  const calendarEvents = allEvents.map((event) => {
+    const eventColor = getEventColor(event);
+    let title = "";
+
+    // `type` プロパティを使ってタイトルを決定
+    switch (event.type) {
+      case "new_balls":
+        title = "🎾新球入荷";
+        break;
+      case "event":
+        title = `📝 ${event.eventName || "イベント"}`;
+        break;
+      case "reservation":
+        title = `${event.startTime.slice(0, 5)}〜${event.endTime.slice(0, 5)}`;
+        break;
+    }
 
     return {
-      title: `${event.startTime.slice(0, 5)}〜${event.endTime.slice(0, 5)}`,
+      title,
       date: event.date,
       color: eventColor,
       backgroundColor: eventColor,
@@ -54,7 +67,7 @@ export default function Calendar({ events: reservationEvents, onDateSelect }: Pr
       onDateSelect(arg.event.startStr);
     }
   };
-  
+
   return (
     <>
       <style>
@@ -85,7 +98,6 @@ export default function Calendar({ events: reservationEvents, onDateSelect }: Pr
         eventClick={handleEventClick}
         eventDisplay="block"
         fixedWeekCount={false}
-        // selectable={true} // この行を削除またはコメントアウトします
       />
     </>
   );

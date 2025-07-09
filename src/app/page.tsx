@@ -1,8 +1,6 @@
-// src/app/page.tsx
-
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Typography,
@@ -15,47 +13,59 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import Calendar from "@/components/Calendar";
 import BottomSheet from "@/components/BottomSheet";
-import { ReservationEvent } from "@/types";
+import SpecialEventDialog from "@/components/SpecialEventDialog";
+import { ReservationEvent, SpecialEvent, CombinedEvent } from "@/types"; // 型をインポート
+import { useAdmin } from "@/contexts/AdminContext";
 
-/**
- * ページのメインコンテンツをレンダリングするクライアントコンポーネント
- * `useSearchParams`を使用するため、`Suspense`の内側で呼び出す必要がある
- */
 function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isAdmin } = useAdmin();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [allEvents, setAllEvents] = useState<ReservationEvent[]>([]);
+  const [allEvents, setAllEvents] = useState<CombinedEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [specialEventDialogOpen, setSpecialEventDialogOpen] = useState(false);
 
-  // LIFFからのリダイレクト処理とデータ取得
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [reservationsRes, specialEventsRes] = await Promise.all([
+        fetch("/api/reservation"),
+        fetch("/api/special-events"),
+      ]);
+
+      if (!reservationsRes.ok || !specialEventsRes.ok) {
+        throw new Error("データの取得に失敗しました");
+      }
+
+      const reservations: Omit<ReservationEvent, "type">[] =
+        await reservationsRes.json();
+      const specialEvents: SpecialEvent[] = await specialEventsRes.json();
+
+      const combinedData: CombinedEvent[] = [
+        ...reservations.map(
+          (r): ReservationEvent => ({ ...r, type: "reservation" })
+        ),
+        ...specialEvents,
+      ];
+
+      setAllEvents(combinedData);
+    } catch (error) {
+      console.error("イベントデータの取得に失敗:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const liffState = searchParams.get("liff.state");
     if (liffState) {
-      // liff.stateパラメータがあれば、そのパスにリダイレクト
       router.replace(liffState);
-      // リダイレクトする場合は、これ以降の処理は不要
       return;
     }
-
-    // 通常のデータ取得処理
-    const fetchAllEvents = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch("/api/reservation");
-        if (!response.ok) throw new Error("Failed to fetch events");
-        const data = await response.json();
-        setAllEvents(data);
-      } catch (error) {
-        console.error("Failed to fetch all events:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAllEvents();
-  }, [searchParams, router]);
+    fetchAllData();
+  }, [searchParams, router, fetchAllData]);
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
@@ -72,7 +82,12 @@ function HomePageContent() {
     router.push("/reserve/new");
   };
 
-  // LIFFのリダイレクト処理中、またはデータ取得中はローディング画面を表示
+  // ボトムシートに渡す予約イベントのみをフィルタリング
+  const reservationEventsForSheet = allEvents.filter(
+    (event): event is ReservationEvent =>
+      event.type === "reservation" && event.date === selectedDate
+  );
+
   if (isLoading || searchParams.get("liff.state")) {
     return (
       <Container maxWidth="md" sx={{ py: 2, textAlign: "center" }}>
@@ -84,15 +99,30 @@ function HomePageContent() {
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
-      {/********************** ↓ここから変更 **********************/}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mb: 1,
+          alignItems: "center",
+        }}
+      >
+        {isAdmin && (
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => setSpecialEventDialogOpen(true)}
+          >
+            イベント追加
+          </Button>
+        )}
         <Button
           variant="outlined"
           color="primary"
           onClick={() => router.push("/contact")}
           sx={{
-            // 画面サイズに応じて、ボタンのpaddingとfont-sizeを調整
-            px: { xs: 1.5, sm: 2 }, // xs: mobile, sm: tablet以上
+            ml: "auto",
+            px: { xs: 1.5, sm: 2 },
             py: { xs: 0.5, sm: 1 },
             fontSize: { xs: "0.75rem", sm: "0.875rem" },
           }}
@@ -100,7 +130,7 @@ function HomePageContent() {
           お問い合わせ
         </Button>
       </Box>
-      {/********************** ↑ここまで変更 **********************/}
+
       <Typography variant="h4" component="h1" align="center" sx={{ mb: 2 }}>
         Unite Court Reserve
       </Typography>
@@ -119,23 +149,47 @@ function HomePageContent() {
             sx={{
               width: 16,
               height: 16,
-              backgroundColor: "#f44336",
+              backgroundColor: "#a5d6a7",
               borderRadius: "4px",
               border: "1px solid #ccc",
             }}
-          />
-          <Typography variant="body2">ボールのみ予約</Typography>
+          />{" "}
+          <Typography variant="body2">新球</Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
           <Box
             sx={{
               width: 16,
               height: 16,
-              backgroundColor: "#66bb6a",
+              backgroundColor: "#e0e0e0",
               borderRadius: "4px",
               border: "1px solid #ccc",
             }}
-          />
+          />{" "}
+          <Typography variant="body2">イベント</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box
+            sx={{
+              width: 16,
+              height: 16,
+              backgroundColor: "#f44336",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+            }}
+          />{" "}
+          <Typography variant="body2">ボール予約</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box
+            sx={{
+              width: 16,
+              height: 16,
+              backgroundColor: "#4caf50",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+            }}
+          />{" "}
           <Typography variant="body2">満員</Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
@@ -147,7 +201,7 @@ function HomePageContent() {
               borderRadius: "4px",
               border: "1px solid #ccc",
             }}
-          />
+          />{" "}
           <Typography variant="body2">残り1人</Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
@@ -159,14 +213,13 @@ function HomePageContent() {
               borderRadius: "4px",
               border: "1px solid #ccc",
             }}
-          />
+          />{" "}
           <Typography variant="body2">空きあり</Typography>
         </Stack>
       </Box>
 
       <Calendar events={allEvents} onDateSelect={handleDateSelect} />
 
-      {/********************** ↓ここを変更 **********************/}
       <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
         <Button
           variant="contained"
@@ -177,15 +230,18 @@ function HomePageContent() {
         >
           新規予約を作成
         </Button>
-        {/* 元のお問い合わせボタンは削除 */}
       </Box>
-      {/********************** ↑ここまで変更 **********************/}
 
       <BottomSheet
         date={selectedDate}
         events={allEvents.filter((event) => event.date === selectedDate)}
         onClose={() => setSelectedDate(null)}
         onDelete={handleEventDelete}
+      />
+      <SpecialEventDialog
+        open={specialEventDialogOpen}
+        onClose={() => setSpecialEventDialogOpen(false)}
+        onEventAdd={fetchAllData}
       />
     </Container>
   );
