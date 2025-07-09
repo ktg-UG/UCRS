@@ -3,6 +3,8 @@ import { db } from "@/lib/drizzle";
 import { reservations } from "@/../drizzle/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic'
+
 // GET: 予約詳細の取得
 export async function GET(
   request: NextRequest,

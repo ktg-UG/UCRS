@@ -3,6 +3,8 @@ import { db } from "@/lib/drizzle";
 import { members } from "@/../drizzle/schema";
 import { asc } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // メンバーを名前順で取得

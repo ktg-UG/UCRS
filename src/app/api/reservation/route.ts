@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
 import { reservations } from "@/../drizzle/schema";
 
+export const dynamic = 'force-dynamic'
+
 // GET: 予約一覧取得（特定の日付をフィルター）
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

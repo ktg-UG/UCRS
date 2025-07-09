@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
 import { specialEvents } from "@/../drizzle/schema";
 
+export const dynamic = 'force-dynamic'
+
 // GET: すべての特別イベントを取得
 export async function GET() {
   try {

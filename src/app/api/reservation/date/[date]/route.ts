@@ -3,6 +3,8 @@ import { db } from "@/lib/drizzle";  // drizzle DB接続
 import { reservations } from "@/../drizzle/schema";
 import { eq } from 'drizzle-orm';  // eq演算子をインポート
 
+export const dynamic = 'force-dynamic'
+
 // GET: 特定の日付に基づく予約データの取得
 export async function GET(request: NextRequest, { params }: { params: { date: string } }) {
   const { date } = params; // URLパラメータから日付を取得
