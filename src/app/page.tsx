@@ -14,7 +14,7 @@ import AddIcon from "@mui/icons-material/Add";
 import Calendar from "@/components/Calendar";
 import BottomSheet from "@/components/BottomSheet";
 import SpecialEventDialog from "@/components/SpecialEventDialog";
-import { ReservationEvent, SpecialEvent, CombinedEvent } from "@/types"; // 型をインポート
+import { CombinedEvent } from "@/types";
 import { useAdmin } from "@/contexts/AdminContext";
 
 function HomePageContent() {
@@ -39,14 +39,11 @@ function HomePageContent() {
         throw new Error("データの取得に失敗しました");
       }
 
-      const reservations: Omit<ReservationEvent, "type">[] =
-        await reservationsRes.json();
-      const specialEvents: SpecialEvent[] = await specialEventsRes.json();
+      const reservations = await reservationsRes.json();
+      const specialEvents = await specialEventsRes.json();
 
       const combinedData: CombinedEvent[] = [
-        ...reservations.map(
-          (r): ReservationEvent => ({ ...r, type: "reservation" })
-        ),
+        ...reservations.map((r: any) => ({ ...r, type: "reservation" })),
         ...specialEvents,
       ];
 
@@ -71,22 +68,23 @@ function HomePageContent() {
     setSelectedDate(date);
   };
 
-  const handleEventDelete = (deletedEventId: number) => {
+  // 削除処理を共通化
+  const handleEventDelete = (
+    type: "reservation" | "event" | "new_balls",
+    deletedEventId: number
+  ) => {
     setAllEvents((prevEvents) =>
-      prevEvents.filter((event) => event.id !== deletedEventId)
+      prevEvents.filter(
+        (event) => !(event.id === deletedEventId && event.type === type)
+      )
     );
+    // ボトムシートも閉じる
     setSelectedDate(null);
   };
 
   const handleNewReservation = () => {
     router.push("/reserve/new");
   };
-
-  // ボトムシートに渡す予約イベントのみをフィルタリング
-  const reservationEventsForSheet = allEvents.filter(
-    (event): event is ReservationEvent =>
-      event.type === "reservation" && event.date === selectedDate
-  );
 
   if (isLoading || searchParams.get("liff.state")) {
     return (

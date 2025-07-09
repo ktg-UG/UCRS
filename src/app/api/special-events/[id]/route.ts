@@ -3,7 +3,7 @@ import { db } from "@/lib/drizzle";
 import { specialEvents } from "@/../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // DELETE: IDに基づいて特別イベントを削除
 export async function DELETE(
