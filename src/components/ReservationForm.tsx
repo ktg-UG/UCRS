@@ -88,7 +88,7 @@ export default function ReservationForm({
   const handleChange = (field: keyof ReservationFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-  
+
   // ★ 定員の選択肢（文字列）を数値に変換してstateを更新する関数
   const handleMaxMembersChange = (value: string) => {
     if (value === "定員なし") {
@@ -97,14 +97,14 @@ export default function ReservationForm({
       handleChange("maxMembers", parseInt(value, 10));
     }
   };
-  
+
   // ★ 定員の数値（state）を表示用の文字列に変換する関数
   const getMaxMembersLabel = (value: number): string => {
-      if (value === 99) {
-          return "定員なし";
-      }
-      return `${value}人`;
-  }
+    if (value === 99) {
+      return "定員なし";
+    }
+    return `${value}人`;
+  };
 
   const handleTimeChange = (
     timeField: "startTime" | "endTime",
@@ -346,7 +346,6 @@ export default function ReservationForm({
             >
               <MenuItem value="練習">練習</MenuItem>
               <MenuItem value="試合">試合</MenuItem>
-              <MenuItem value="レッスン">レッスン</MenuItem>
             </TextField>
           </Stack>
         </>
