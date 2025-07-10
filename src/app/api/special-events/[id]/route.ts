@@ -1,38 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
-import { reservations } from "@/../drizzle/schema";
+import { specialEvents } from "@/../drizzle/schema"; // 正しいテーブルをインポート
 import { eq } from "drizzle-orm";
-import { ReservationEvent } from "@/types";
+import { SpecialEvent } from "@/types"; // 正しい型をインポート
 
 export const dynamic = "force-dynamic";
 
-// GET: 予約詳細の取得
+// GET: 特別イベント詳細の取得
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
-  const reservationId = Number(id);
+  const eventId = Number(id);
 
-  if (isNaN(reservationId)) {
+  if (isNaN(eventId)) {
     return NextResponse.json({ error: "無効なID形式です" }, { status: 400 });
   }
 
   try {
-    const data = await db.query.reservations.findFirst({
-      where: (table, { eq }) => eq(table.id, reservationId),
+    const data = await db.query.specialEvents.findFirst({
+      where: (table, { eq }) => eq(table.id, eventId),
     });
 
     if (!data) {
       return NextResponse.json(
-        { error: "指定された予約が見つかりません" },
+        { error: "指定されたイベントが見つかりません" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("予約データの取得に失敗:", error);
+    console.error("特別イベントデータの取得に失敗:", error);
     return NextResponse.json(
       { error: "サーバーエラーが発生しました" },
       { status: 500 }
@@ -40,31 +40,28 @@ export async function GET(
   }
 }
 
-// PUT: 予約の更新
+// PUT: 特別イベントの更新
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
-  const reservationId = Number(id);
+  const eventId = Number(id);
 
-  if (isNaN(reservationId)) {
+  if (isNaN(eventId)) {
     return NextResponse.json({ error: "無効なID形式です" }, { status: 400 });
   }
 
   try {
     const body = await request.json();
-    const { startTime, endTime, maxMembers, memberNames, purpose, comment } =
-      body;
+    const { type, date, eventName, memo } = body;
 
-    const updateData: Partial<ReservationEvent> = {};
+    const updateData: Partial<SpecialEvent> = {};
 
-    if (startTime !== undefined) updateData.startTime = startTime;
-    if (endTime !== undefined) updateData.endTime = endTime;
-    if (maxMembers !== undefined) updateData.maxMembers = maxMembers;
-    if (memberNames !== undefined) updateData.memberNames = memberNames;
-    if (purpose !== undefined) updateData.purpose = purpose;
-    if (comment !== undefined) updateData.comment = comment;
+    if (type !== undefined) updateData.type = type;
+    if (date !== undefined) updateData.date = date;
+    if (eventName !== undefined) updateData.eventName = eventName;
+    if (memo !== undefined) updateData.memo = memo;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -73,22 +70,22 @@ export async function PUT(
       );
     }
 
-    const updatedReservations = await db
-      .update(reservations)
+    const updatedEvents = await db
+      .update(specialEvents)
       .set(updateData)
-      .where(eq(reservations.id, reservationId))
+      .where(eq(specialEvents.id, eventId))
       .returning();
 
-    if (updatedReservations.length === 0) {
+    if (updatedEvents.length === 0) {
       return NextResponse.json(
-        { error: "更新対象の予約が見つかりません" },
+        { error: "更新対象のイベントが見つかりません" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(updatedReservations[0]);
+    return NextResponse.json(updatedEvents[0]);
   } catch (error) {
-    console.error("予約データの更新に失敗:", error);
+    console.error("特別イベントデータの更新に失敗:", error);
     return NextResponse.json(
       { error: "サーバーエラーが発生しました" },
       { status: 500 }
@@ -96,34 +93,34 @@ export async function PUT(
   }
 }
 
-// DELETE: 予約の削除
+// DELETE: 特別イベントの削除
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
-  const reservationId = Number(id);
+  const eventId = Number(id);
 
-  if (isNaN(reservationId)) {
+  if (isNaN(eventId)) {
     return NextResponse.json({ error: "無効なID形式です" }, { status: 400 });
   }
 
   try {
-    const deletedReservations = await db
-      .delete(reservations)
-      .where(eq(reservations.id, reservationId))
-      .returning({ deletedId: reservations.id });
+    const deletedEvents = await db
+      .delete(specialEvents)
+      .where(eq(specialEvents.id, eventId))
+      .returning({ deletedId: specialEvents.id });
 
-    if (deletedReservations.length === 0) {
+    if (deletedEvents.length === 0) {
       return NextResponse.json(
-        { error: "削除対象の予約が見つかりません" },
+        { error: "削除対象のイベントが見つかりません" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ message: "予約を削除しました" });
+    return NextResponse.json({ message: "イベントを削除しました" });
   } catch (error) {
-    console.error("予約データの削除に失敗:", error);
+    console.error("特別イベントの削除に失敗:", error);
     return NextResponse.json(
       { error: "サーバーエラーが発生しました" },
       { status: 500 }
