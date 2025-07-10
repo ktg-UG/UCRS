@@ -1,8 +1,8 @@
 // src/app/reserve/[id]/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   IconButton,
   CircularProgress,
   Container,
+  Alert,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ReservationForm, {
@@ -19,9 +20,10 @@ import ReservationForm, {
 } from "@/components/ReservationForm";
 import { ReservationEvent } from "@/types";
 
-export default function ReserveDetailPage() {
+function ReserveDetailPageContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const id = pathname.split("/").pop();
 
   const [editMode, setEditMode] = useState(false);
@@ -37,8 +39,18 @@ export default function ReserveDetailPage() {
     maxMembers: 1,
     memberNames: [],
     purpose: "",
-    comment: "", // stateに初期値を追加
+    comment: "",
   });
+
+  const [initialMemberNames, setInitialMemberNames] = useState<string[]>([]);
+  const [memberEditOnly, setMemberEditOnly] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "true") {
+      setEditMode(true);
+      setMemberEditOnly(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (id) {
@@ -57,12 +69,14 @@ export default function ReserveDetailPage() {
               ? "ボールのみ予約"
               : "メンバー募集"
           );
-          setFormData({
+          const initialData = {
             ...data,
             purpose: data.purpose || "",
-            comment: data.comment || "", // 取得したデータをセット
+            comment: data.comment || "",
             date: new Date(data.date + "T00:00:00"),
-          });
+          };
+          setFormData(initialData);
+          setInitialMemberNames(data.memberNames); // 初期メンバーを保存
         } catch (err: any) {
           setError(err.message);
         } finally {
@@ -76,7 +90,24 @@ export default function ReserveDetailPage() {
   const handleSave = async () => {
     if (!formData.date) return;
     setIsSubmitting(true);
-    const payload = { ...formData, date: format(formData.date, "yyyy-MM-dd") };
+
+    // 型定義を修正
+    let payload: Partial<Omit<ReservationFormData, "date">> & {
+      date: string;
+      memberNames: string[];
+    };
+
+    if (memberEditOnly) {
+      payload = {
+        date: format(formData.date, "yyyy-MM-dd"),
+        memberNames: formData.memberNames,
+      };
+    } else {
+      payload = {
+        ...formData,
+        date: format(formData.date, "yyyy-MM-dd"),
+      };
+    }
 
     try {
       const res = await fetch(`/api/reservation/id/${id}`, {
@@ -87,7 +118,8 @@ export default function ReserveDetailPage() {
       if (res.ok) {
         alert("予約を更新しました");
         setEditMode(false);
-        router.refresh(); 
+        setMemberEditOnly(false);
+        router.refresh();
       } else {
         const errorData = await res.json();
         alert(`更新失敗: ${errorData.error}`);
@@ -119,6 +151,15 @@ export default function ReserveDetailPage() {
     }
   };
 
+  const handleCancel = () => {
+    setFormData((prev) => ({
+      ...prev,
+      memberNames: initialMemberNames,
+    }));
+    setEditMode(false);
+    setMemberEditOnly(false);
+  };
+
   if (loading)
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -139,10 +180,17 @@ export default function ReserveDetailPage() {
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" sx={{ flexGrow: 1, textAlign: "center" }}>
-          募集詳細・編集
+          {memberEditOnly ? "メンバー参加" : "募集詳細・編集"}
         </Typography>
         <Box sx={{ width: 40 }} />
       </Stack>
+
+      {memberEditOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          メンバーの追加・削除のみ可能です。
+        </Alert>
+      )}
+
       <ReservationForm
         formData={formData}
         setFormData={setFormData}
@@ -150,6 +198,7 @@ export default function ReserveDetailPage() {
         setReservationType={setReservationType}
         disabled={!editMode}
         isEditMode={true}
+        memberEditOnly={memberEditOnly}
       />
       <Stack spacing={2} mt={3}>
         {!editMode ? (
@@ -158,7 +207,7 @@ export default function ReserveDetailPage() {
             variant="contained"
             onClick={() => setEditMode(true)}
           >
-            編集する
+            予約内容を編集する
           </Button>
         ) : (
           <>
@@ -179,22 +228,32 @@ export default function ReserveDetailPage() {
               fullWidth
               variant="outlined"
               color="secondary"
-              onClick={() => setEditMode(false)}
+              onClick={handleCancel}
             >
               キャンセル
             </Button>
           </>
         )}
-        <Button
-          fullWidth
-          variant="contained"
-          color="error"
-          onClick={handleDelete}
-          sx={{ mt: 1 }}
-        >
-          この募集を削除する
-        </Button>
+        {!memberEditOnly && (
+          <Button
+            fullWidth
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            sx={{ mt: 1 }}
+          >
+            この募集を削除する
+          </Button>
+        )}
       </Stack>
     </Container>
+  );
+}
+
+export default function ReserveDetailPage() {
+  return (
+    <Suspense fallback={<CircularProgress />}>
+      <ReserveDetailPageContent />
+    </Suspense>
   );
 }

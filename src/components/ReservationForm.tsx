@@ -40,6 +40,7 @@ type Props = {
   setReservationType?: (value: string) => void;
   disabled?: boolean;
   isEditMode?: boolean;
+  memberEditOnly?: boolean; // 新しいprop
 };
 
 const hourOptions = Array.from({ length: 24 }, (_, i) =>
@@ -55,6 +56,7 @@ export default function ReservationForm({
   setReservationType,
   disabled = false,
   isEditMode = false,
+  memberEditOnly = false, // デフォルト値
 }: Props) {
   const [allMembers, setAllMembers] = useState<string[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -128,6 +130,8 @@ export default function ReservationForm({
     }
   };
 
+  const formDisabled = disabled || memberEditOnly;
+
   return (
     <Stack spacing={3}>
       {!isEditMode && setReservationType && (
@@ -153,7 +157,7 @@ export default function ReservationForm({
                 onChange={(e) => {
                   handleChange("lineNotify", e.target.checked);
                 }}
-                disabled={disabled}
+                disabled={formDisabled}
               />
             }
             label="LINEグループに募集を通知"
@@ -167,7 +171,7 @@ export default function ReservationForm({
           onChange={(newDate) => handleChange("date", newDate)}
           minDate={new Date()}
           format="yyyy/MM/dd"
-          disabled={isEditMode || disabled}
+          disabled={isEditMode || formDisabled}
           slotProps={{
             textField: {
               fullWidth: true,
@@ -182,7 +186,7 @@ export default function ReservationForm({
         <Typography sx={{ minWidth: 60 }}>開始時刻</Typography>
         <TextField
           select
-          disabled={disabled}
+          disabled={formDisabled}
           value={formData.startTime.split(":")[0]}
           onChange={(e) =>
             handleTimeChange("startTime", "hour", e.target.value)
@@ -199,7 +203,7 @@ export default function ReservationForm({
         <Typography variant="h6">:</Typography>
         <TextField
           select
-          disabled={disabled}
+          disabled={formDisabled}
           value={formData.startTime.split(":")[1]}
           onChange={(e) =>
             handleTimeChange("startTime", "minute", e.target.value)
@@ -218,7 +222,7 @@ export default function ReservationForm({
         <Typography sx={{ minWidth: 60 }}>終了時刻</Typography>
         <TextField
           select
-          disabled={disabled}
+          disabled={formDisabled}
           value={formData.endTime.split(":")[0]}
           onChange={(e) => handleTimeChange("endTime", "hour", e.target.value)}
           sx={{ flexGrow: 1 }}
@@ -233,7 +237,7 @@ export default function ReservationForm({
         <Typography variant="h6">:</Typography>
         <TextField
           select
-          disabled={disabled}
+          disabled={formDisabled}
           value={formData.endTime.split(":")[1]}
           onChange={(e) =>
             handleTimeChange("endTime", "minute", e.target.value)
@@ -256,7 +260,7 @@ export default function ReservationForm({
             fullWidth
             label="代表者名"
             value={formData.memberNames?.[0] || ""}
-            disabled={disabled}
+            disabled={formDisabled}
             onChange={(e) => handleChange("memberNames", [e.target.value])}
           />
         </Stack>
@@ -266,7 +270,7 @@ export default function ReservationForm({
             <Typography sx={{ minWidth: 60 }}>定員</Typography>
             <TextField
               select
-              disabled={disabled}
+              disabled={formDisabled}
               value={getMaxMembersLabel(formData.maxMembers)}
               onChange={(e) => handleMaxMembersChange(e.target.value)}
               sx={{ minWidth: 120 }}
@@ -284,7 +288,7 @@ export default function ReservationForm({
             options={allMembers.filter(
               (name) => !formData.memberNames.includes(name)
             )}
-            disabled={disabled}
+            disabled={disabled && !memberEditOnly}
             value={formData.memberNames}
             onChange={(event, newValue) => {
               handleChange("memberNames", newValue);
@@ -335,7 +339,7 @@ export default function ReservationForm({
             <Typography sx={{ minWidth: 60 }}>目的</Typography>
             <TextField
               select
-              disabled={disabled}
+              disabled={formDisabled}
               value={formData.purpose}
               onChange={(e) => handleChange("purpose", e.target.value)}
               sx={{ minWidth: 150 }}
@@ -347,7 +351,6 @@ export default function ReservationForm({
         </>
       )}
 
-      {/* ↓↓↓ ここから追加 ↓↓↓ */}
       <Stack direction="column" spacing={1}>
         <Typography sx={{ minWidth: 60 }}>コメント</Typography>
         <TextField
@@ -355,12 +358,11 @@ export default function ReservationForm({
           multiline
           rows={3}
           value={formData.comment || ""}
-          disabled={disabled}
+          disabled={formDisabled}
           onChange={(e) => handleChange("comment", e.target.value)}
           placeholder="連絡事項などあれば記入してください"
         />
       </Stack>
-      {/* ↑↑↑ ここまで追加 ↑↑↑ */}
     </Stack>
   );
 }
