@@ -230,31 +230,32 @@ export default function BottomSheet({
                     <Typography>📝 {event.eventName}</Typography>
                   )}
                 </Box>
-                {/* --- 修正箇所 --- */}
-                {/* 予約削除: 未来日なら誰でも、過去日なら管理者のみ */}
-                {event.type === "reservation" && (!isPastDate || isAdmin) && (
-                  <IconButton
-                    aria-label="delete-reservation"
-                    size="small"
-                    onClick={(e) => handleOpenDeleteDialog(event.id, e)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                {!isPastDate && (
+                  <>
+                    {event.type === "reservation" && (
+                      <IconButton
+                        aria-label="delete-reservation"
+                        size="small"
+                        onClick={(e) => handleOpenDeleteDialog(event.id, e)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    {isAdmin &&
+                      (event.type === "event" ||
+                        event.type === "new_balls") && (
+                        <IconButton
+                          aria-label="delete-special-event"
+                          size="small"
+                          onClick={(e) =>
+                            handleOpenSpecialEventDeleteDialog(event, e)
+                          }
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                  </>
                 )}
-                {/* イベント・新球削除: 管理者のみ */}
-                {isAdmin &&
-                  (event.type === "event" || event.type === "new_balls") && (
-                    <IconButton
-                      aria-label="delete-special-event"
-                      size="small"
-                      onClick={(e) =>
-                        handleOpenSpecialEventDeleteDialog(event, e)
-                      }
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                {/* --- 修正ここまで --- */}
               </Box>
             ))
           ) : (

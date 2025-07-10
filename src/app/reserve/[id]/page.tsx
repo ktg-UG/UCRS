@@ -1,7 +1,7 @@
 // src/app/reserve/[id]/page.tsx
 "use client";
 
-import React, { useState, useEffect, Suspense, useMemo } from "react"; // useMemo をインポート
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import {
@@ -19,14 +19,12 @@ import ReservationForm, {
   ReservationFormData,
 } from "@/components/ReservationForm";
 import { ReservationEvent } from "@/types";
-import { useAdmin } from "@/contexts/AdminContext"; // useAdmin をインポート
 
 function ReserveDetailPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const id = pathname.split("/").pop();
-  const { isAdmin } = useAdmin(); // isAdmin状態を取得
 
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,14 +44,6 @@ function ReserveDetailPageContent() {
 
   const [initialMemberNames, setInitialMemberNames] = useState<string[]>([]);
   const [memberEditOnly, setMemberEditOnly] = useState(false);
-
-  // formData.dateから過去の日付かどうかを判定
-  const isPastDate = useMemo(() => {
-    if (!formData.date) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return new Date(formData.date) < today;
-  }, [formData.date]);
 
   useEffect(() => {
     if (searchParams.get("edit") === "true") {
@@ -86,7 +76,7 @@ function ReserveDetailPageContent() {
             date: new Date(data.date + "T00:00:00"),
           };
           setFormData(initialData);
-          setInitialMemberNames(data.memberNames);
+          setInitialMemberNames(data.memberNames); // 初期メンバーを保存
         } catch (err: any) {
           setError(err.message);
         } finally {
@@ -101,6 +91,7 @@ function ReserveDetailPageContent() {
     if (!formData.date) return;
     setIsSubmitting(true);
 
+    // 型定義を修正
     let payload: Partial<Omit<ReservationFormData, "date">> & {
       date: string;
       memberNames: string[];
@@ -219,7 +210,6 @@ function ReserveDetailPageContent() {
             fullWidth
             variant="contained"
             onClick={() => setEditMode(true)}
-            disabled={isPastDate && !isAdmin} // 管理者でない場合、過去の予約は編集不可
           >
             予約内容を編集する
           </Button>
@@ -255,7 +245,6 @@ function ReserveDetailPageContent() {
             color="error"
             onClick={handleDelete}
             sx={{ mt: 1 }}
-            disabled={isPastDate && !isAdmin} // 管理者でない場合、過去の予約は削除不可
           >
             この募集を削除する
           </Button>
