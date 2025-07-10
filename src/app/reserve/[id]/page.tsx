@@ -160,6 +160,10 @@ function ReserveDetailPageContent() {
     setMemberEditOnly(false);
   };
 
+  const handleBack = () => {
+    router.push("/");
+  };
+
   if (loading)
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -176,7 +180,7 @@ function ReserveDetailPageContent() {
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <Stack direction="row" alignItems="center" mb={2}>
-        <IconButton onClick={() => router.back()}>
+        <IconButton onClick={handleBack}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" sx={{ flexGrow: 1, textAlign: "center" }}>

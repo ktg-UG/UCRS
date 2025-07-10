@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
           },
           {
             type: "uri",
-            label: "詳細を見る",
-            uri: `${NEXT_PUBLIC_APP_BASE_URL}/reserve/${reservationDetails.id}`,
+            label: "詳細・メンバー編集",
+            uri: `${NEXT_PUBLIC_APP_BASE_URL}/reserve/${reservationDetails.id}?edit=true`,
           },
         ],
       },

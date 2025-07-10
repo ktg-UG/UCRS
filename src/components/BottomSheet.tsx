@@ -230,7 +230,7 @@ export default function BottomSheet({
                     <Typography>📝 {event.eventName}</Typography>
                   )}
                 </Box>
-                {isAdmin && !isPastDate && (
+                {!isPastDate && (
                   <>
                     {event.type === "reservation" && (
                       <IconButton
@@ -241,17 +241,19 @@ export default function BottomSheet({
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     )}
-                    {(event.type === "event" || event.type === "new_balls") && (
-                      <IconButton
-                        aria-label="delete-special-event"
-                        size="small"
-                        onClick={(e) =>
-                          handleOpenSpecialEventDeleteDialog(event, e)
-                        }
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
+                    {isAdmin &&
+                      (event.type === "event" ||
+                        event.type === "new_balls") && (
+                        <IconButton
+                          aria-label="delete-special-event"
+                          size="small"
+                          onClick={(e) =>
+                            handleOpenSpecialEventDeleteDialog(event, e)
+                          }
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                   </>
                 )}
               </Box>
