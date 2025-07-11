@@ -19,7 +19,7 @@ import { format } from "date-fns";
 type Props = {
   open: boolean;
   onClose: () => void;
-  onEventAdd: () => void; // イベント追加後にカレンダーを再読み込みさせるための関数
+  onEventAdd: () => void;
 };
 
 export default function SpecialEventDialog({
