@@ -1,21 +1,20 @@
+//カレンダー用
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
 import { reservations } from "@/../drizzle/schema";
 
 export const dynamic = "force-dynamic";
 
-// GET: 予約一覧取得（特定の日付をフィルター）
+// GET: 予約一覧取得
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date"); // クエリパラメータから日付を取得
 
   try {
-    // 型を明示的に指定
-    let query = db.select().from(reservations) as any; // 型の推論を避けるために 'any' 型を使用
+    let query = db.select().from(reservations) as any;
 
-    // 日付が指定されていれば、その日付でフィルタリング
     if (date) {
-      query = query.where(reservations.date, date); // whereで条件を設定
+      query = query.where(reservations.date, date);
     }
 
     const data = await query;
@@ -34,7 +33,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // バリデーション例（必須項目が揃っているか確認）
     if (
       !body.date ||
       !body.startTime ||

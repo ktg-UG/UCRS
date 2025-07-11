@@ -3,7 +3,7 @@ import { db } from "@/lib/drizzle";
 import { reservations } from "@/../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 // GET: 予約詳細の取得
 export async function GET(
@@ -54,7 +54,6 @@ export async function PUT(
   try {
     const body = await request.json();
 
-    // Drizzleを使ってデータを更新し、更新後のデータを返す
     const updatedReservations = await db
       .update(reservations)
       .set({
@@ -66,7 +65,7 @@ export async function PUT(
         comment: body.comment,
       })
       .where(eq(reservations.id, reservationId))
-      .returning(); // 更新された行のデータを返す
+      .returning();
 
     if (updatedReservations.length === 0) {
       return NextResponse.json(

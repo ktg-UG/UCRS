@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import Providers from "@/components/Providers";
 import ClientLayout from "@/components/ClientLayout";
-import { AdminProvider } from "@/contexts/AdminContext"; // AdminProviderをインポート
+import { AdminProvider } from "@/contexts/AdminContext";
 
 export const metadata = {
   title: "Unite Court Reserve",
@@ -14,11 +14,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head></head>
       <body>
         <Providers>
-          {/* ↓↓↓ ここから変更 ↓↓↓ */}
           <AdminProvider>
             <ClientLayout>{children}</ClientLayout>
           </AdminProvider>
-          {/* ↑↑↑ ここまで変更 ↑↑↑ */}
         </Providers>
       </body>
     </html>

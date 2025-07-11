@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { password } = await req.json();
+    const { password } = await request.json();
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminPassword) {
@@ -13,10 +13,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (password === adminPassword) {
-      // 認証成功
       return NextResponse.json({ success: true });
     } else {
-      // 認証失敗
       return NextResponse.json(
         { success: false, error: "パスワードが違います。" },
         { status: 401 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/drizzle";
-import { reservations } from "@/../drizzle/schema";
+import { specialEvents } from "@/../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { ReservationEvent } from "@/types";
 
@@ -19,7 +19,7 @@ export async function GET(
   }
 
   try {
-    const data = await db.query.reservations.findFirst({
+    const data = await db.query.specialEvents.findFirst({
       where: (table, { eq }) => eq(table.id, reservationId),
     });
 
@@ -74,9 +74,9 @@ export async function PUT(
     }
 
     const updatedReservations = await db
-      .update(reservations)
+      .update(specialEvents)
       .set(updateData)
-      .where(eq(reservations.id, reservationId))
+      .where(eq(specialEvents.id, reservationId))
       .returning();
 
     if (updatedReservations.length === 0) {
@@ -110,9 +110,9 @@ export async function DELETE(
 
   try {
     const deletedReservations = await db
-      .delete(reservations)
-      .where(eq(reservations.id, reservationId))
-      .returning({ deletedId: reservations.id });
+      .delete(specialEvents)
+      .where(eq(specialEvents.id, reservationId))
+      .returning({ deletedId: specialEvents.id });
 
     if (deletedReservations.length === 0) {
       return NextResponse.json(

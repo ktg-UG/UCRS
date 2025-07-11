@@ -5,7 +5,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { EventClickArg } from "@fullcalendar/core";
 import jaLocale from "@fullcalendar/core/locales/ja";
-import { CombinedEvent } from "@/types"; // 型をCombinedEventに変更
+import { CombinedEvent } from "@/types";
 
 type Props = {
   events: CombinedEvent[];
@@ -13,20 +13,19 @@ type Props = {
 };
 
 const getEventColor = (event: CombinedEvent): string => {
-  // `type` プロパティを使ってイベントの種類を判別
   switch (event.type) {
     case "new_balls":
-      return "#a5d6a7"; // 黄緑
+      return "#a5d6a7";
     case "event":
-      return "#e0e0e0"; // 灰色
+      return "#e0e0e0";
     case "reservation":
-      if (event.purpose === "ボールのみ予約") return "#f44336"; // 赤
+      if (event.purpose === "ボールのみ予約") return "#f44336";
       const spotsLeft = event.maxMembers - event.memberNames.length;
-      if (spotsLeft <= 0) return "#4caf50"; // 満員 (緑)
-      if (spotsLeft === 1) return "#ffa726"; // 残り1人 (オレンジ)
-      return "#ffeb3b"; // 空きあり (黄)
+      if (spotsLeft <= 0) return "#4caf50";
+      if (spotsLeft === 1) return "#ffa726";
+      return "#ffeb3b";
     default:
-      return "#e0e0e0"; // 想定外のイベントは灰色
+      return "#e0e0e0";
   }
 };
 
@@ -35,7 +34,6 @@ export default function Calendar({ events: allEvents, onDateSelect }: Props) {
     const eventColor = getEventColor(event);
     let title = "";
 
-    // `type` プロパティを使ってタイトルを決定
     switch (event.type) {
       case "new_balls":
         title = "🎾新球入荷";

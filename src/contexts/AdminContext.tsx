@@ -23,6 +23,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+//カスタムフック
 export const useAdmin = () => {
   const context = useContext(AdminContext);
   if (context === undefined) {

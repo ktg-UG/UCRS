@@ -181,7 +181,7 @@ export default function BottomSheet({
           >
             <Typography variant="h6">{date} の予定</Typography>
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              {!isPastDate && (
+              {(isAdmin || !isPastDate) && (
                 <Button variant="contained" onClick={handleReserve}>
                   この日に予約する
                 </Button>
@@ -230,31 +230,22 @@ export default function BottomSheet({
                     <Typography>📝 {event.eventName}</Typography>
                   )}
                 </Box>
-                {!isPastDate && (
-                  <>
-                    {event.type === "reservation" && (
-                      <IconButton
-                        aria-label="delete-reservation"
-                        size="small"
-                        onClick={(e) => handleOpenDeleteDialog(event.id, e)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                    {isAdmin &&
-                      (event.type === "event" ||
-                        event.type === "new_balls") && (
-                        <IconButton
-                          aria-label="delete-special-event"
-                          size="small"
-                          onClick={(e) =>
-                            handleOpenSpecialEventDeleteDialog(event, e)
-                          }
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                  </>
+                {isAdmin ? (
+                  <IconButton
+                    aria-label="delete-reservation"
+                    size="small"
+                    onClick={(e) => {event.type === "reservation" ? handleOpenDeleteDialog(event.id, e) : handleOpenSpecialEventDeleteDialog(event, e)}}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                ) : !isPastDate && event.type === "reservation" && (
+                  <IconButton
+                    aria-label="delete-reservation"
+                    size="small"
+                    onClick={(e) => handleOpenDeleteDialog(event.id, e)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
                 )}
               </Box>
             ))

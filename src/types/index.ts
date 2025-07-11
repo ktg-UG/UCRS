@@ -1,6 +1,6 @@
 // 通常の予約イベントの型
 export type ReservationEvent = {
-  type: 'reservation'; // 種類を識別するためのプロパティ
+  type: 'reservation';
   id: number;
   date: string;
   startTime: string;
@@ -13,12 +13,11 @@ export type ReservationEvent = {
 
 // 新球入荷・イベント用の型
 export type SpecialEvent = {
-  type: 'new_balls' | 'event'; // 種類を識別するためのプロパティ
+  type: 'new_balls' | 'event';
   id: number;
   date: string;
   eventName: string | null;
   memo: string | null;
 };
 
-// アプリケーションで扱うすべてのイベントを統合した型
 export type CombinedEvent = ReservationEvent | SpecialEvent;

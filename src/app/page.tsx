@@ -78,7 +78,6 @@ function HomePageContent() {
         (event) => !(event.id === deletedEventId && event.type === type)
       )
     );
-    // ボトムシートも閉じる
     setSelectedDate(null);
   };
 

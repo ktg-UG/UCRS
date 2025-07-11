@@ -1,7 +1,6 @@
-// drizzle/schema.ts
 import { pgTable, serial, integer, date, time, jsonb, text, varchar } from "drizzle-orm/pg-core";
 
-// 既存のreservationsテーブル
+//予約情報テーブル
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
@@ -13,20 +12,18 @@ export const reservations = pgTable("reservations", {
   comment: text("comment"),
 });
 
-// 既存のmembersテーブル
+//メンバーテーブル
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
   lineUserId: text("line_user_id").unique(),
 });
 
-// ↓↓↓ ここから追加 ↓↓↓
-// 新球入荷・イベント用の新しいテーブル
+//新球入荷 or イベント用テーブル
 export const specialEvents = pgTable("special_events", {
   id: serial("id").primaryKey(),
-  type: varchar("type", { length: 50 }).notNull(), // 'new_balls' or 'event'
+  type: varchar("type", { length: 50 }).notNull(),
   date: date("date").notNull(),
-  eventName: text("event_name"), // イベント名 (イベントの場合のみ)
-  memo: text("memo"), // メモ (イベントの場合のみ)
+  eventName: text("event_name"),
+  memo: text("memo"),
 });
-// ↑↑↑ ここまで追加 ↑↑↑
