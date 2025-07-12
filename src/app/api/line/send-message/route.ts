@@ -4,7 +4,7 @@ const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const NEXT_PUBLIC_APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID;
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 const formatJapaneseDate = (dateString: string): string => {
   try {
@@ -43,25 +43,30 @@ export async function POST(req: NextRequest) {
     }
 
     const formattedDate = formatJapaneseDate(reservationDetails.date);
+    const purpose = reservationDetails.purpose || "未設定";
 
-    // コメントがあればメッセージに追加
-    let textForLine = [
-      `新規募集 : ${formattedDate} ${reservationDetails.startTime}から${reservationDetails.endTime}`,
-      `募集者 : ${reservationDetails.ownerName}`,
-      `目的: ${reservationDetails.purpose || "未設定"}`,
-    ].join("\n");
-
-    if (reservationDetails.comment) {
-      textForLine += `\nコメント: ${reservationDetails.comment}`;
+    let comment = reservationDetails.comment || "";
+    if (comment.length > 20) {
+      comment = comment.substring(0, 20) + "...";
     }
+
+    const titleForLine = `🎾 ${formattedDate}の新規募集`;
+    const textForLine = [
+      `時間: ${reservationDetails.startTime}〜${reservationDetails.endTime}`,
+      `募集者: ${reservationDetails.ownerName}`,
+      `目的: ${purpose}`,
+      `コメント: ${comment || "なし"}`, // コメントがない場合は'なし'と表示
+    ]
+      .join("\n")
+      .trim(); // 末尾の不要な改行を削除
 
     const messagePayload = {
       type: "template",
       altText: "新しいテニス募集があります！",
       template: {
         type: "buttons",
-        title: "🎾 新しいテニス募集！",
-        text: textForLine,
+        title: titleForLine, // 修正後のタイトル
+        text: textForLine, // 修正後のテキスト
         actions: [
           {
             type: "postback",
@@ -76,6 +81,8 @@ export async function POST(req: NextRequest) {
         ],
       },
     };
+
+    // ★★★ここまで変更★★★
 
     const lineRes = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",

@@ -66,17 +66,6 @@ export async function POST(req: NextRequest) {
     const events = body.events || [];
 
     for (const event of events) {
-      // ★★★ここから変更★★★
-      // イベントのソースがグループの場合、グループIDをログに出力
-      if (
-        event.source &&
-        event.source.type === "group" &&
-        event.source.groupId
-      ) {
-        console.log("★★★★★ LINE Group ID is: ", event.source.groupId, " ★★★★★");
-      }
-      // ★★★ここまで変更★★★
-
       // --- 1. フォローイベントとブロック解除イベントの処理 ---
       if (
         (event.type === "follow" || event.type === "unfollow") &&
