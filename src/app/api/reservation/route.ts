@@ -33,12 +33,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // バリデーションを強化
     if (
       !body.date ||
       !body.startTime ||
       !body.endTime ||
       !body.maxMembers ||
-      !body.purpose
+      !body.purpose ||
+      !body.lineUserId // ★lineUserIdの存在をチェック
     ) {
       return NextResponse.json(
         { error: "必須項目が不足しています" },

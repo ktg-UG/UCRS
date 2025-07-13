@@ -85,6 +85,13 @@
       "when": 1752045061542,
       "tag": "0011_blue_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1752445508349,
+      "tag": "0012_melted_malice",
+      "breakpoints": true
     }
   ]
 }

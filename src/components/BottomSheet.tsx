@@ -2,6 +2,7 @@
 
 import { useState, MouseEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
 import {
   Drawer,
   Box,
@@ -54,6 +55,7 @@ export default function BottomSheet({
 }: Props) {
   const router = useRouter();
   const { isAdmin } = useAdmin();
+  const { data: session, status } = useSession();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [targetReservationId, setTargetReservationId] = useState<number | null>(
@@ -92,16 +94,31 @@ export default function BottomSheet({
 
   const handleDeleteConfirm = async () => {
     if (!targetReservationId) return;
+
+    const userId = (session?.user as any)?.id;
+    if (status !== "authenticated" || !userId) {
+      alert("削除するにはLINEログインが必要です。");
+      signIn("line");
+      handleCloseDeleteDialog();
+      return;
+    }
+
     try {
       const res = await fetch(`/api/reservation/id/${targetReservationId}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineUserId: userId }),
       });
       if (res.ok) {
         onDelete("reservation", targetReservationId);
         alert("予約を取り消しました。");
       } else {
-        const error = await res.json();
-        alert(`削除に失敗しました: ${error.error}`);
+        if (res.status === 403) {
+          alert("予約した本人しか削除できません。");
+        } else {
+          const errorData = await res.json();
+          alert(`削除に失敗しました: ${errorData.error}`);
+        }
       }
     } catch (err) {
       alert("削除処理中にエラーが発生しました。");

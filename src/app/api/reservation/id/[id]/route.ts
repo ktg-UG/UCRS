@@ -97,6 +97,35 @@ export async function DELETE(
   }
 
   try {
+    // ▼▼▼ ここから修正 ▼▼▼
+    const { lineUserId: currentUserId } = await request.json();
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: "ログインユーザー情報がありません" },
+        { status: 401 }
+      );
+    }
+
+    const reservation = await db.query.reservations.findFirst({
+      where: (table, { eq }) => eq(table.id, reservationId),
+    });
+
+    if (!reservation) {
+      return NextResponse.json(
+        { error: "削除対象の予約が見つかりません" },
+        { status: 404 }
+      );
+    }
+
+    // ★予約に紐づくIDと、現在のユーザーIDを比較
+    if (reservation.lineUserId !== currentUserId) {
+      return NextResponse.json(
+        { error: "予約した本人しか削除できません" },
+        { status: 403 }
+      ); // Forbidden
+    }
+    // ▲▲▲ ここまで修正 ▲▲▲
+
     const deletedReservations = await db
       .delete(reservations)
       .where(eq(reservations.id, reservationId))

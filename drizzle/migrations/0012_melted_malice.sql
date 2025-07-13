@@ -1,0 +1,1 @@
+ALTER TABLE "reservations" ADD COLUMN "line_user_id" text NOT NULL;

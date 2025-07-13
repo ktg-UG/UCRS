@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
 import { format } from "date-fns";
 import {
   Box,
@@ -25,6 +26,7 @@ function ReserveDetailPageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const id = pathname.split("/").pop();
+  const { data: session, status } = useSession();
 
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -132,18 +134,32 @@ function ReserveDetailPageContent() {
   };
 
   const handleDelete = async () => {
+    const userId = (session?.user as any)?.id;
+    if (status !== "authenticated" || !userId) {
+      alert("削除するにはLINEログインが必要です。");
+      signIn("line");
+      return;
+    }
+
     if (window.confirm("本当にこの募集を削除しますか？")) {
       try {
         const res = await fetch(`/api/reservation/id/${id}`, {
           method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lineUserId: userId }), // ログインユーザーのIDを送信
         });
+
         if (res.ok) {
           alert("募集を削除しました");
           router.push("/");
           router.refresh();
         } else {
-          const error = await res.json();
-          alert(`削除失敗: ${error.error}`);
+          if (res.status === 403) {
+            alert("予約した本人しか削除できません。");
+          } else {
+            const errorData = await res.json();
+            alert(`削除失敗: ${errorData.error}`);
+          }
         }
       } catch (err) {
         alert("削除処理中にエラーが発生しました");

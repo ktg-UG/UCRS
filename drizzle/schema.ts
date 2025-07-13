@@ -3,6 +3,7 @@ import { pgTable, serial, integer, date, time, jsonb, text, varchar } from "driz
 //予約情報テーブル
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
+  lineUserId: text("line_user_id").notNull(),
   date: date("date").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
