@@ -3,7 +3,7 @@ import LineProvider from "next-auth/providers/line";
 import { db } from "@/lib/drizzle";
 import { members } from "@/../drizzle/schema";
 
-export const authOptions: AuthOptions = {
+const authOptions: AuthOptions = {
   providers: [
     LineProvider({
       clientId: process.env.LINE_CLIENT_ID!,
