@@ -6,18 +6,29 @@ const LINE_GROUP_ID = process.env.LINE_GROUP_ID;
 
 export const dynamic = "force-dynamic";
 
+/**
+ * 日付文字列 (YYYY/MM/DD) を「月日(曜日)」形式にフォーマットします。
+ * @param dateString - YYYY/MM/DD 形式の日付文字列
+ * @returns フォーマットされた日付文字列 (例: 7月16日(火))
+ */
 const formatJapaneseDate = (dateString: string): string => {
   try {
-    const parts = dateString.split("/");
-    if (parts.length === 3) {
-      const month = parseInt(parts[1], 10);
-      const day = parseInt(parts[2], 10);
-      return `${month}月${day}日`;
+    const date = new Date(dateString);
+    // getTime() が NaN を返す場合、無効な日付と判断
+    if (isNaN(date.getTime())) {
+      return dateString; // パース失敗時は元の文字列を返す
     }
+
+    const month = date.getMonth() + 1; // getMonth() は 0 から始まるため +1
+    const day = date.getDate();
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const weekday = weekdays[date.getDay()]; // getDay() は 0 (日) から 6 (土) を返す
+
+    return `${month}月${day}日(${weekday})`;
   } catch (e) {
-    return dateString;
+    console.error("日付のフォーマット中にエラーが発生しました:", e);
+    return dateString; // 万が一のエラー時も元の文字列を返す
   }
-  return dateString;
 };
 
 export async function POST(req: NextRequest) {
@@ -26,7 +37,7 @@ export async function POST(req: NextRequest) {
     !NEXT_PUBLIC_APP_BASE_URL ||
     !LINE_GROUP_ID
   ) {
-    console.error("Environment variables missing");
+    console.error("必要な環境変数が設定されていません");
     return NextResponse.json(
       { error: "環境変数が設定されていません" },
       { status: 500 }
@@ -55,18 +66,18 @@ export async function POST(req: NextRequest) {
       `時間: ${reservationDetails.startTime}〜${reservationDetails.endTime}`,
       `募集者: ${reservationDetails.ownerName}`,
       `目的: ${purpose}`,
-      `コメント: ${comment || "なし"}`, // コメントがない場合は'なし'と表示
+      `コメント: ${comment || "なし"}`,
     ]
       .join("\n")
-      .trim(); // 末尾の不要な改行を削除
+      .trim();
 
     const messagePayload = {
       type: "template",
       altText: "新しいテニス募集があります！",
       template: {
         type: "buttons",
-        title: titleForLine, // 修正後のタイトル
-        text: textForLine, // 修正後のテキスト
+        title: titleForLine,
+        text: textForLine,
         actions: [
           {
             type: "postback",
@@ -81,8 +92,6 @@ export async function POST(req: NextRequest) {
         ],
       },
     };
-
-    // ★★★ここまで変更★★★
 
     const lineRes = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
@@ -100,14 +109,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "LINEメッセージを送信しました" });
     } else {
       const errorData = await lineRes.json();
-      console.error("LINEメッセージ送信失敗:", errorData);
+      console.error("LINEメッセージの送信に失敗しました:", errorData);
       return NextResponse.json(
-        { error: "LINEメッセージ送信に失敗しました", details: errorData },
+        { error: "LINEメッセージの送信に失敗しました", details: errorData },
         { status: lineRes.status }
       );
     }
   } catch (error) {
-    console.error("LINEメッセージ送信中に予期せぬエラーが発生:", error);
+    console.error("LINEメッセージ送信中に予期せぬエラーが発生しました:", error);
     return NextResponse.json(
       { error: "サーバーエラーが発生しました" },
       { status: 500 }
