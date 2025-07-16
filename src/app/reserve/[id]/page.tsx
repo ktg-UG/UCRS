@@ -225,7 +225,7 @@ function ReserveDetailPageContent() {
           <Button
             fullWidth
             variant="contained"
-            onClick={() => setEditMode(true)}
+            onClick={() => {setEditMode(true); setMemberEditOnly(true)}}
           >
             予約内容を編集する
           </Button>
