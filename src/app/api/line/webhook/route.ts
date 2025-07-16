@@ -57,6 +57,32 @@ async function sendPushMessage(userId: string, text: string) {
   }
 }
 
+
+/**
+ * 日付文字列 (YYYY/MM/DD) を「月日(曜日)」形式にフォーマットします。
+ * @param dateString - YYYY/MM/DD 形式の日付文字列
+ * @returns フォーマットされた日付文字列 (例: 7月16日(火))
+ */
+const formatJapaneseDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    // getTime() が NaN を返す場合、無効な日付と判断
+    if (isNaN(date.getTime())) {
+      return dateString; // パース失敗時は元の文字列を返す
+    }
+
+    const month = date.getMonth() + 1; // getMonth() は 0 から始まるため +1
+    const day = date.getDate();
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const weekday = weekdays[date.getDay()]; // getDay() は 0 (日) から 6 (土) を返す
+
+    return `${month}月${day}日(${weekday})`;
+  } catch (e) {
+    console.error("日付のフォーマット中にエラーが発生しました:", e);
+    return dateString; // 万が一のエラー時も元の文字列を返す
+  }
+};
+
 /**
  * LINEプラットフォームからのWebhookイベントを処理するメイン関数
  */
@@ -161,8 +187,11 @@ export async function POST(req: NextRequest) {
               target: members.lineUserId,
               set: { name: newParticipantName },
             });
+          
+          const formattedDate = formatJapaneseDate(reservation.date)
+          const notificationText = `${formattedDate} ${reservation.startTime.slice(0,5)}～の参加を受け付けました！`
 
-          await sendPushMessage(newParticipantUserId, "参加を受け付けました！");
+          await sendPushMessage(newParticipantUserId, notificationText);
 
           if (reservation.memberNames.length > 0) {
             const ownerName = reservation.memberNames[0];
@@ -174,9 +203,7 @@ export async function POST(req: NextRequest) {
               owner?.lineUserId &&
               owner.lineUserId !== newParticipantUserId
             ) {
-              const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${
-                reservation.date
-              } ${reservation.startTime.slice(0, 5)}〜」に参加しました！`;
+              const notificationText = `${newParticipantName}さんが、${ownerName}さんの募集「${formattedDate} ${reservation.startTime.slice(0, 5)}〜」に参加しました！`;
               await sendPushMessage(owner.lineUserId, notificationText);
             }
           }
