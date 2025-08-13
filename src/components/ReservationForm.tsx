@@ -30,7 +30,6 @@ export type ReservationFormData = {
   memberNames: string[];
   purpose: string;
   comment?: string; // commentプロパティを追加
-  lineNotify?: boolean;
 };
 
 type Props = {
@@ -146,23 +145,6 @@ export default function ReservationForm({
           <ToggleButton value="メンバー募集">メンバー募集</ToggleButton>
           <ToggleButton value="ボールのみ予約">ボールのみ予約</ToggleButton>
         </ToggleButtonGroup>
-      )}
-
-      {reservationType === "メンバー募集" && !isEditMode && (
-        <FormGroup>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.lineNotify || false}
-                onChange={(e) => {
-                  handleChange("lineNotify", e.target.checked);
-                }}
-                disabled={formDisabled}
-              />
-            }
-            label="LINEグループに募集を通知"
-          />
-        </FormGroup>
       )}
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography sx={{ minWidth: 60 }}>日付</Typography>
