@@ -12,8 +12,8 @@ UCRS (Unite Court Reserve System) は、コート予約を管理するための�
     * メンバー募集の場合、定員、参加メンバー、目的（練習、試合、レッスン）を設定できます。
     * 新しいメンバー名は自動的にメンバーリストに登録されます。/route.ts]
 * **予約編集・削除**:
-    * 既存の予約情報を編集できます。/page.tsx, ktg-ug/ucrs/UCRS-4d1f47117fe56774d85aac823ab0ed55a77ab337/src/app/api/reservation/id/[id]/route.ts]
-    * 不要になった予約は削除できます。/page.tsx, ktg-ug/ucrs/UCRS-4d1f47117fe56774d85aac823ab0ed55a77ab337/src/app/api/reservation/id/[id]/route.ts, ktg-ug/ucrs/UCRS-4d1f47117fe56774d85aac823ab0ed55a77ab337/src/components/BottomSheet.tsx]
+    * 既存の予約情報を編集できます。
+    * 不要になった予約は削除できます。
 * **メンバー管理**:
     * 参加メンバーは過去の入力履歴からオートコンプリートで選択できます。
     * メンバー名はデータベースで一元管理されます。
